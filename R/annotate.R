@@ -248,10 +248,10 @@ annotate_with_centromere.data.frame = function(x, chrom_col = "CHROM", pos_col =
   cli::cli_progress_step("Starting centromere annotation for data frame...")
   
   # Rename columns if needed
-  if (chrom_col != "chrom" || pos_col != "POS") {
+  if (chrom_col != "CHROM" || pos_col != "POS") {
     top_hits <- x %>%
       dplyr::rename(
-        chrom = !!rlang::sym(chrom_col),
+        CHROM = !!rlang::sym(chrom_col),
         POS = !!rlang::sym(pos_col)
       )
   } else {
@@ -270,15 +270,15 @@ annotate_with_centromere.data.frame = function(x, chrom_col = "CHROM", pos_col =
     # Left join with ideogram to find regions that variants fall into
     dplyr::left_join(
       ideogram_data %>% 
-        dplyr::select(chrom, start, end, name, in_centromere),
-      by = dplyr::join_by(chrom, between(POS, start, end))
+        dplyr::select(CHROM, start, end, name, in_centromere),
+      by = dplyr::join_by(CHROM, between(POS, start, end))
     ) %>%
     dplyr::mutate(
       in_centromere = dplyr::if_else(is.na(in_centromere), FALSE, in_centromere)
     )
   
   # Restore original column names if they were renamed
-  if (chrom_col != "chrom") {
+  if (chrom_col != "CHROM") {
     result <- result %>%
       dplyr::rename(
         !!rlang::sym(chrom_col) := chrom
@@ -334,12 +334,33 @@ annotate_with_centromere.GWASFormatter = function(x, ...) {
   return(x)
 }
 
+#' Annotate data with CHIP gene information
+#' @export
+annotate_with_chip_genes = function(x, ...) {
+  UseMethod("annotate_with_chip_genes")
+}
+
+#' @export 
+annotate_with_chip_genes.data.frame = function(x, ...) {
+  if (!"gene_name" %in% names(x)) {
+    cli::cli_abort("x must contain a gene_name column; did you run find_nearest_gene?")
+  }
+
+  x %>%
+    dplyr::mutate(
+      is_chip_gene = dplyr::case_when(
+        gene_name %in% chip_genes ~ TRUE,
+        TRUE ~ FALSE
+      )
+    )
+}
+
 #' Annotate top hits with CHIP gene information
 #' 
 #' @param top_hits A data frame containing the top hits.
 #' @return A data frame with the CHIP gene information.
 #' @export
-annotate_with_chip_genes = function(top_hits) {
+annotate_with_chip_genes.GWASFormatter = function(top_hits) {
 
   if (!"gene_name" %in% names(top_hits)) {
     cli::cli_abort("top_hits must contain a gene_name column; did you run find_nearest_gene?")
@@ -362,7 +383,6 @@ annotate_with_chip_genes = function(top_hits) {
     dplyr::mutate(
       is_chip_gene = TRUE
     )
-    
 
   dplyr::copy_to(
     con,
@@ -405,8 +425,8 @@ annotate_with_immunoglobulin.data.frame = function(x, ...) {
 
   result = x %>%
     dplyr::mutate(
-      is_IGHV = ifelse(chrom == "chr14" & POS >= 105586437 & POS <= 106879844, TRUE, FALSE),
-      is_IGLV = ifelse(chrom == "chr22" & POS >= 22026076 & POS <= 22922913, TRUE, FALSE),
+      is_IGHV = ifelse(CHROM == "chr14" & POS >= 105586437 & POS <= 106879844, TRUE, FALSE),
+      is_IGLV = ifelse(CHROM == "chr22" & POS >= 22026076 & POS <= 22922913, TRUE, FALSE),
     )
     
 
@@ -425,8 +445,8 @@ annotate_with_immunoglobulin.GWASFormatter = function(x, ...) {
 
   x$data = x$data %>%
     dplyr::mutate(
-      is_IGHV = ifelse(chrom == "chr14" & POS >= 105586437 & POS <= 106879844, TRUE, FALSE),
-      is_IGLV = ifelse(chrom == "chr22" & POS >= 22026076 & POS <= 22922913, TRUE, FALSE)
+      is_IGHV = ifelse(CHROM == "chr14" & POS >= 105586437 & POS <= 106879844, TRUE, FALSE),
+      is_IGLV = ifelse(CHROM == "chr22" & POS >= 22026076 & POS <= 22922913, TRUE, FALSE)
     ) %>%
     dplyr::compute(temporary = FALSE, overwrite = TRUE, name = "summary_stats")
 

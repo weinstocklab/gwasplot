@@ -3,6 +3,8 @@
 S3method(annotate_with_centromere,GWASFormatter)
 S3method(annotate_with_centromere,data.frame)
 S3method(annotate_with_centromere,tbl_df)
+S3method(annotate_with_chip_genes,GWASFormatter)
+S3method(annotate_with_chip_genes,data.frame)
 S3method(annotate_with_immunoglobulin,GWASFormatter)
 S3method(annotate_with_immunoglobulin,data.frame)
 S3method(annotate_with_immunoglobulin,tbl_df)

@@ -2,16 +2,10 @@
 % Please edit documentation in R/annotate.R
 \name{annotate_with_chip_genes}
 \alias{annotate_with_chip_genes}
-\title{Annotate top hits with CHIP gene information}
+\title{Annotate data with CHIP gene information}
 \usage{
-annotate_with_chip_genes(top_hits)
-}
-\arguments{
-\item{top_hits}{A data frame containing the top hits.}
-}
-\value{
-A data frame with the CHIP gene information.
+annotate_with_chip_genes(x, ...)
 }
 \description{
-Annotate top hits with CHIP gene information
+Annotate data with CHIP gene information
 }
