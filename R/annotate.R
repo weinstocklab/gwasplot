@@ -270,7 +270,7 @@ annotate_with_centromere.data.frame = function(x, chrom_col = "CHROM", pos_col =
     # Left join with ideogram to find regions that variants fall into
     dplyr::left_join(
       ideogram_data %>% 
-        dplyr::select(CHROM, start, end, name, in_centromere),
+        dplyr::select(CHROM = chrom, start, end, name, in_centromere),
       by = dplyr::join_by(CHROM, between(POS, start, end))
     ) %>%
     dplyr::mutate(
