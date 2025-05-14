@@ -2,7 +2,7 @@ pandoc: 3.1.11
 pkgdown: 2.1.2
 pkgdown_sha: ~
 articles: {}
-last_built: 2025-05-12T18:50Z
+last_built: 2025-05-14T16:51Z
 urls:
   reference: https://weinstockj.github.io/gwasplot/reference
   article: https://weinstockj.github.io/gwasplot/articles
