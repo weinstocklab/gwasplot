@@ -47,7 +47,6 @@ manhattan.data.frame = function(gwas, output_prefix, lower_logp_threshold = 3.0)
     # Filter SNP to make the plot lighter
     dplyr::filter(-log10(PVALUE) > lower_logp_threshold)
 
-
   axis = prepared %>%
     dplyr::group_by(CHROM_index, CHROM) %>%
     dplyr::summarize(center = (max(POScum) + min(POScum)) / 2) %>% # integer overflow concern
@@ -67,7 +66,7 @@ manhattan.data.frame = function(gwas, output_prefix, lower_logp_threshold = 3.0)
       breaks= axis$center, expand = c(0, 0)
     ) +
     ggplot2::scale_y_continuous(
-      breaks = seq(0, max(-log10(prepared$PVALUE)), by = 4),
+      breaks = seq(0, max(pmin(-log10(prepared$PVALUE), 300), by = 4)),
       expand = ggplot2::expansion(mult = c(0, 0), add = c(0, 1))
     ) +     # remove space between plot area and x axis
     # Custom the theme:
@@ -87,7 +86,6 @@ manhattan.data.frame = function(gwas, output_prefix, lower_logp_threshold = 3.0)
       panel.border = element_blank(),
       axis.line.y = element_line(size = .6)
     )
-
 
   log_info("Now rendering")
   # fname_pdf = file.path(output_prefix, "manhattan.pdf")
