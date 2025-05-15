@@ -18,7 +18,7 @@ manhattan.tbl_df = function(gwas, output_prefix, lower_logp_threshold = 3.0) {
 
 #' @export 
 manhattan.data.frame = function(gwas, output_prefix, lower_logp_threshold = 3.0) {
-  
+
   chrom_lookup = tibble::tibble(
     CHROM = c(glue::glue("chr{1:22}"), "chrX"),
     CHROM_index = 1:23
@@ -40,7 +40,7 @@ manhattan.data.frame = function(gwas, output_prefix, lower_logp_threshold = 3.0)
     dplyr::arrange(CHROM_index) %>%
     dplyr::mutate(tot = cumsum(chr_len) - chr_len) %>%
     # Add this info to the initial dataset
-    dplyr::right_join(gwas$data %>% dplyr::select(CHROM, POS, PVALUE), by = "CHROM") %>%
+    dplyr::right_join(gwas %>% dplyr::select(CHROM, POS, PVALUE), by = "CHROM") %>%
     #     # Add a cumulative position of each SNP
     dplyr::arrange(CHROM_index, POS) %>%
     dplyr::mutate(POScum = POS / scaling + tot) %>%
