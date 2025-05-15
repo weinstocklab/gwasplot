@@ -18,11 +18,11 @@ manhattan.tbl_df = function(gwas, output_prefix, lower_logp_threshold = 3.0) {
 
 #' @export 
 manhattan.data.frame = function(gwas, output_prefix, lower_logp_threshold = 3.0) {
+  
   chrom_lookup = tibble::tibble(
     CHROM = c(glue::glue("chr{1:22}"), "chrX"),
     CHROM_index = 1:23
-  ) %>%
-    dplyr::copy_to(gwas$con, ., "chrom_lookup", overwrite = TRUE)
+  ) 
 
   scaling = 1e8
   pvalue_threshold = 5e-8
