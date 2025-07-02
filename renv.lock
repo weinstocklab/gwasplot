@@ -9,6 +9,18 @@
     ]
   },
   "Packages": {
+    "Cairo": {
+      "Package": "Cairo",
+      "Version": "1.6-2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "grDevices",
+        "graphics"
+      ],
+      "Hash": "3918e6b40d27984ca4a99c73b92406c3"
+    },
     "DBI": {
       "Package": "DBI",
       "Version": "1.2.3",
@@ -93,6 +105,19 @@
       ],
       "Hash": "c39f4155b3ceb1a9a2799d700fbd4b6a"
     },
+    "beeswarm": {
+      "Package": "beeswarm",
+      "Version": "0.4.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "grDevices",
+        "graphics",
+        "stats",
+        "utils"
+      ],
+      "Hash": "0f4e9d8caa6feaa7e409ae6c30f2ca66"
+    },
     "blob": {
       "Package": "blob",
       "Version": "1.2.4",
@@ -115,20 +140,6 @@
         "utils"
       ],
       "Hash": "16850760556401a2eeb27d39bd11c9cb"
-    },
-    "colorspace": {
-      "Package": "colorspace",
-      "Version": "2.1-1",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R",
-        "grDevices",
-        "graphics",
-        "methods",
-        "stats"
-      ],
-      "Hash": "d954cb1c57e8d8b756165d7ba18aa55a"
     },
     "cowplot": {
       "Package": "cowplot",
@@ -246,18 +257,6 @@
       ],
       "Hash": "b66f884e1b805c4a3c318c9465ddeb01"
     },
-    "fansi": {
-      "Package": "fansi",
-      "Version": "1.0.6",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R",
-        "grDevices",
-        "utils"
-      ],
-      "Hash": "962174cf2aeb5b9eea581522286a911f"
-    },
     "farver": {
       "Package": "farver",
       "Version": "2.1.2",
@@ -275,6 +274,21 @@
         "methods"
       ],
       "Hash": "15e9634c0fcd294799e9b2e929ed1b86"
+    },
+    "ggbeeswarm": {
+      "Package": "ggbeeswarm",
+      "Version": "0.7.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "beeswarm",
+        "cli",
+        "ggplot2",
+        "lifecycle",
+        "vipor"
+      ],
+      "Hash": "899f28fe0388b7f687d7453429c2474d"
     },
     "ggplot2": {
       "Package": "ggplot2",
@@ -300,6 +314,22 @@
         "withr"
       ],
       "Hash": "7ad64861e028a777d7d67ff83231b548"
+    },
+    "ggrastr": {
+      "Package": "ggrastr",
+      "Version": "1.0.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "Cairo",
+        "R",
+        "ggbeeswarm",
+        "ggplot2",
+        "grid",
+        "png",
+        "ragg"
+      ],
+      "Hash": "7c8178842114bfcd44e688e7fd84c52a"
     },
     "ghql": {
       "Package": "ghql",
@@ -358,6 +388,21 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "13641a1c6d2cc98801b76764078e17ea"
+    },
+    "httr": {
+      "Package": "httr",
+      "Version": "1.4.7",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "R6",
+        "curl",
+        "jsonlite",
+        "mime",
+        "openssl"
+      ],
+      "Hash": "ac107251d9d9fd72f0ca8049988f1d7f"
     },
     "httr2": {
       "Package": "httr2",
@@ -488,17 +533,6 @@
       ],
       "Hash": "0ec19f34c72fab674d8f2b4b1c6410e1"
     },
-    "munsell": {
-      "Package": "munsell",
-      "Version": "0.5.1",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "colorspace",
-        "methods"
-      ],
-      "Hash": "4fd8900853b746af55b81fda99da7695"
-    },
     "nlme": {
       "Package": "nlme",
       "Version": "3.1-164",
@@ -549,6 +583,16 @@
       ],
       "Hash": "01f28d4278f15c76cddbea05899c5d6f"
     },
+    "png": {
+      "Package": "png",
+      "Version": "0.1-8",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R"
+      ],
+      "Hash": "bd54ba8a0a5faded999a7aab6e46b374"
+    },
     "purrr": {
       "Package": "purrr",
       "Version": "1.0.4",
@@ -566,14 +610,14 @@
     },
     "ragg": {
       "Package": "ragg",
-      "Version": "1.3.3",
+      "Version": "1.4.0",
       "Source": "Repository",
-      "Repository": "https://packagemanager.rstudio.com/all/latest",
+      "Repository": "CRAN",
       "Requirements": [
         "systemfonts",
         "textshaping"
       ],
-      "Hash": "0595fe5e47357111f29ad19101c7d271"
+      "Hash": "1591adde9ce8ff7de58072e4a32b66ce"
     },
     "rappdirs": {
       "Package": "rappdirs",
@@ -608,7 +652,7 @@
     },
     "scales": {
       "Package": "scales",
-      "Version": "1.3.0",
+      "Version": "1.4.0",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -620,11 +664,10 @@
         "glue",
         "labeling",
         "lifecycle",
-        "munsell",
         "rlang",
         "viridisLite"
       ],
-      "Hash": "c19df082ba346b0ffa6f833e92de34d1"
+      "Hash": "c5bba8f0d1df8c4b9538a40570798d9b"
     },
     "stringi": {
       "Package": "stringi",
@@ -697,12 +740,12 @@
     },
     "tibble": {
       "Package": "tibble",
-      "Version": "3.2.1",
+      "Version": "3.3.0",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "R",
-        "fansi",
+        "cli",
         "lifecycle",
         "magrittr",
         "methods",
@@ -712,7 +755,7 @@
         "utils",
         "vctrs"
       ],
-      "Hash": "a84e2cc86d07289b3b6f5069df7a004c"
+      "Hash": "784b27d0801c3829de602105757b2cd7"
     },
     "tidyr": {
       "Package": "tidyr",
@@ -799,6 +842,18 @@
         "rlang"
       ],
       "Hash": "c03fa420630029418f7e6da3667aac4a"
+    },
+    "vipor": {
+      "Package": "vipor",
+      "Version": "0.4.7",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "graphics",
+        "stats"
+      ],
+      "Hash": "86493c62c14eb78140f1725003958a77"
     },
     "viridisLite": {
       "Package": "viridisLite",
