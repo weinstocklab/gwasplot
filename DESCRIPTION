@@ -22,15 +22,19 @@ Imports:
     dplyr (>= 1.1.4),
     duckdb (>= 1.2.1),
     ggplot2 (>= 3.4.0),
+    ggrastr,
     ghql,
     glue,
+    httr,
     httr2,
     jsonlite,
     logger,
     magrittr,
     ragg,
     Rcpp,
+    scales,
     stringr,
+    tibble,
     tidyr
 RoxygenNote: 7.3.2
 LinkingTo: 
