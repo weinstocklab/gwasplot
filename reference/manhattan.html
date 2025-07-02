@@ -38,7 +38,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">manhattan</span><span class="op">(</span><span class="va">gwas</span>, <span class="va">output_prefix</span>, lower_logp_threshold <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">manhattan</span><span class="op">(</span><span class="va">gwas</span>, <span class="va">output</span>, lower_logp_threshold <span class="op">=</span> <span class="fl">3</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -49,12 +49,16 @@
 <dd><p>A gwas object containing the data to plot.</p></dd>
 
 
-<dt id="arg-output-prefix">output_prefix<a class="anchor" aria-label="anchor" href="#arg-output-prefix"></a></dt>
-<dd><p>The prefix for the output file name.</p></dd>
+<dt id="arg-output">output<a class="anchor" aria-label="anchor" href="#arg-output"></a></dt>
+<dd><p>The output file name.</p></dd>
 
 
 <dt id="arg-lower-logp-threshold">lower_logp_threshold<a class="anchor" aria-label="anchor" href="#arg-lower-logp-threshold"></a></dt>
 <dd><p>The lower threshold for the -log10(p-value) to plot. Default is 3.0.</p></dd>
+
+
+<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
+<dd><p>Additional arguments passed to `ggsave`.</p></dd>
 
 </dl></div>
 
