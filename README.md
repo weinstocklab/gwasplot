@@ -159,23 +159,27 @@ Data preview:
 # Load and reformat data
 gwas_stats <- reformat_summary_statistics("path/to/gwas_results.parquet")
 
-# Quality control: remove problematic regions
+# Quality control: remove problematic regions for WGS GWAS
 gwas_clean <- gwas_stats %>%
-  exclude_difficult_regions(beds_exclude = c("hg19diff", "UCSC_unusual", "GRC_exclusions"))
+  exclude_difficult_regions(
+    beds_exclude = c(
+      "hg19diff", 
+      "UCSC_unusual", 
+      "GRC_exclusions"
+      )
+    )
+
+
+manhattan(gwas_clean, output_prefix = "my_analysis")
+qqplot(gwas_clean, output_prefix = "my_analysis")
 
 # Get top hits and annotate with genes
 top_hits <- gwas_clean %>%
   select_top_hits(threshold = 5e-8) %>%
-  find_nearest_gene() %>%
-  annotate_with_chip_genes() %>%
-  annotate_with_centromere()
-
-# Create plots
-manhattan(gwas_clean, output_prefix = "my_analysis")
-qqplot(gwas_clean, output_prefix = "my_analysis")
+  find_nearest_gene()
 
 # Plot specific loci
-locuszoom(top_hits, locus_chr = "chr2", locus_start = 25000000, locus_end = 25500000)
+locuszoom(gwas_clean, locus_chr = "chr2", locus_start = 25000000, locus_end = 25500000)
 ```
 
 ## Contact
