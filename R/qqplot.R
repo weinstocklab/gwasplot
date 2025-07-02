@@ -4,7 +4,7 @@
 #' @param thin.obs.places Number of decimal places to round the observed p-values for thinning. Default is 2.
 #' @param thin.exp.places Number of decimal places to round the expected p-values for thinning. Default is 2.
 #' @export
-qqunif_plot = function(pvalues,
+qqplot = function(pvalues,
                        should.thin = TRUE,
                        thin.obs.places = 2,
                        thin.exp.places = 2,
@@ -172,8 +172,7 @@ qqunif_plot = function(pvalues,
 #' @param height Height of the output figure in inches.
 #' @param dpi DPI of the output figure.
 #' @return NULL
-#' @export
-qqunif_plot_save = function(gwas, output_prefix, width = 5, height = 5, dpi = 300) {
+qqplot_save = function(gwas, output_prefix, width = 5, height = 5, dpi = 300) {
   log_info("Creating QQ plot")
   fname <- glue::glue("{output_prefix}_qqplot.png")
   
@@ -185,7 +184,7 @@ qqunif_plot_save = function(gwas, output_prefix, width = 5, height = 5, dpi = 30
     dplyr::collect(.)
   
   # Create and save the plot
-  p <- qqunif_plot(p_values)
+  p <- qqplot(p_values)
   
   ggplot2::ggsave(
     filename = fname,
