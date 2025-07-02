@@ -87,32 +87,135 @@
 </div>
 </div>
 <div class="section level1">
+<h1 id="key-features">Key Features<a class="anchor" aria-label="anchor" href="#key-features"></a>
+</h1>
+<div class="section level2">
+<h2 id="data-quality-control-and-filtering">Data Quality Control and Filtering<a class="anchor" aria-label="anchor" href="#data-quality-control-and-filtering"></a>
+</h2>
+<p><strong>gwasplot</strong> includes robust filtering capabilities to remove variants from problematic genomic regions that can lead to spurious associations:</p>
+<div class="section level3">
+<h3 id="exclude-difficult-regions">Exclude Difficult Regions<a class="anchor" aria-label="anchor" href="#exclude-difficult-regions"></a>
+</h3>
+<p>The <code><a href="reference/exclude_difficult_regions.html">exclude_difficult_regions()</a></code> function removes variants from regions with known mapping difficulties:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Remove variants from multiple types of difficult regions</span></span>
+<span><span class="va">gwas_filtered</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/exclude_difficult_regions.html">exclude_difficult_regions</a></span><span class="op">(</span><span class="va">gwas_stats</span>, </span>
+<span>                                         beds_exclude <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"hg19diff"</span>, <span class="st">"UCSC_unusual"</span>, <span class="st">"GRC_exclusions"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>Available region types include: - <strong>hg19diff</strong>: Regions with assembly differences between genome builds - <strong>UCSC_unusual</strong>: Unusual regions identified by UCSC (gaps, heterochromatin, etc.) - <strong>GRC_exclusions</strong>: Genome Reference Consortium exclusion regions - <strong>GIAB_difficult_regions</strong>: Genome in a Bottle difficult-to-map regions</p>
+</div>
+<div class="section level3">
+<h3 id="custom-variant-filtering">Custom Variant Filtering<a class="anchor" aria-label="anchor" href="#custom-variant-filtering"></a>
+</h3>
+<p>Filter variants using custom whitelists or blacklists:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Keep only variants in a specific region or set</span></span>
+<span><span class="va">filtered_gwas</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/filter_variants.html">filter_variants</a></span><span class="op">(</span><span class="va">gwas_stats</span>, subset <span class="op">=</span> <span class="st">"my_variants.parquet"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Exclude specific variants</span></span>
+<span><span class="va">filtered_gwas</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/filter_variants.html">filter_variants</a></span><span class="op">(</span><span class="va">gwas_stats</span>, exclude <span class="op">=</span> <span class="st">"bad_variants.parquet"</span><span class="op">)</span></span></code></pre></div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="gene-annotation">Gene Annotation<a class="anchor" aria-label="anchor" href="#gene-annotation"></a>
+</h2>
+<p>Annotate variants with nearest protein-coding genes:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Add gene annotations</span></span>
+<span><span class="va">annotated_gwas</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/find_nearest_gene.html">find_nearest_gene</a></span><span class="op">(</span><span class="va">gwas_stats</span>, threshold <span class="op">=</span> <span class="fl">1e5</span><span class="op">)</span>  <span class="co"># 100kb window</span></span></code></pre></div>
+<p>Additional specialized annotations: - <strong>CHIP genes</strong>: <code><a href="reference/annotate_with_chip_genes.html">annotate_with_chip_genes()</a></code> - flags variants in clonal hematopoiesis genes - <strong>Centromeres</strong>: <code><a href="reference/annotate_with_centromere.html">annotate_with_centromere()</a></code> - identifies variants in centromeric regions<br>
+- <strong>Immunoglobulin loci</strong>: <code><a href="reference/annotate_with_immunoglobulin.html">annotate_with_immunoglobulin()</a></code> - flags variants in Ig heavy/light chain regions</p>
+</div>
+<div class="section level2">
+<h2 id="visualization">Visualization<a class="anchor" aria-label="anchor" href="#visualization"></a>
+</h2>
+<div class="section level3">
+<h3 id="manhattan-plots">Manhattan Plots<a class="anchor" aria-label="anchor" href="#manhattan-plots"></a>
+</h3>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/manhattan.html">manhattan</a></span><span class="op">(</span>gwas <span class="op">=</span> <span class="va">gwas_stats</span>, output_prefix <span class="op">=</span> <span class="st">"my_manhattan"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="qq-plots">QQ Plots<a class="anchor" aria-label="anchor" href="#qq-plots"></a>
+</h3>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/qqplot_save.html">qqplot_save</a></span><span class="op">(</span>gwas <span class="op">=</span> <span class="va">gwas_stats</span>, output_prefix <span class="op">=</span> <span class="st">"my_qqplot"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="locuszoom-plots">LocusZoom Plots<a class="anchor" aria-label="anchor" href="#locuszoom-plots"></a>
+</h3>
+<p>Create detailed regional association plots with gene tracks:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Plot a specific locus with gene structure</span></span>
+<span><span class="fu"><a href="reference/locuszoom.html">locuszoom</a></span><span class="op">(</span><span class="va">gwas_stats</span>, locus_chr <span class="op">=</span> <span class="st">"chr2"</span>, locus_start <span class="op">=</span> <span class="fl">25000000</span>, locus_end <span class="op">=</span> <span class="fl">25500000</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="volcano-plots">Volcano Plots<a class="anchor" aria-label="anchor" href="#volcano-plots"></a>
+</h3>
+<p>For post-GWAS analysis (e.g., after empirical Bayes shrinkage):</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Automatically uses lfsr if available, otherwise p-values</span></span>
+<span><span class="fu"><a href="reference/volcano.html">volcano</a></span><span class="op">(</span><span class="va">gwas_data</span>, phenotype_label <span class="op">=</span> <span class="st">"My Phenotype"</span><span class="op">)</span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div class="section level1">
 <h1 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a>
 </h1>
 <p>Below are some sample usage examples:</p>
+<div class="section level2">
+<h2 id="basic-workflow">Basic Workflow<a class="anchor" aria-label="anchor" href="#basic-workflow"></a>
+</h2>
 <p>Reformat GWAS Summary Statistics Use the reformat_summary_statistics function to read and reformat GWAS summary statistics from a parquet or CSV file:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">library</span>(gwasplot)</span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a></span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="co"># Reformat summary statistics from a file</span></span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>gwas_stats <span class="ot">&lt;-</span> <span class="fu">reformat_summary_statistics</span>(<span class="st">"path/to/your/file.parquet"</span>)</span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a><span class="fu">print</span>(gwas_stats )</span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a></span>
-<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>GWAS object</span>
-<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>File path<span class="sc">:</span> ..<span class="sc">/</span>concatenated_results.parquet</span>
-<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>Detected format<span class="sc">:</span> regenie</span>
-<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>Data names<span class="sc">:</span> CHROM, POS, ID, ALLELE0, ALLELE1, A1FREQ, N, BETA, SE, CHISQ, LOG10P, phenotype</span>
-<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>Data preview<span class="sc">:</span></span>
-<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="co"># A tibble: 5 × 9</span></span>
-<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a>  CHROM      POS REF   ALT      AF_ALT     BETA  LOG10P PVALUE ID</span>
-<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a>  <span class="sc">&lt;</span>chr<span class="sc">&gt;</span>    <span class="er">&lt;</span>dbl<span class="sc">&gt;</span> <span class="er">&lt;</span>chr<span class="sc">&gt;</span> <span class="er">&lt;</span>chr<span class="sc">&gt;</span>     <span class="er">&lt;</span>dbl<span class="sc">&gt;</span>    <span class="er">&lt;</span>dbl<span class="sc">&gt;</span>   <span class="er">&lt;</span>dbl<span class="sc">&gt;</span>  <span class="er">&lt;</span>dbl<span class="sc">&gt;</span> <span class="er">&lt;</span>chr<span class="sc">&gt;</span></span>
-<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="dv">1</span> chr3  <span class="dv">90000011</span> T     C     <span class="fl">0.000138</span>  <span class="sc">-</span><span class="fl">0.00157</span> <span class="fl">0.00753</span>  <span class="fl">0.983</span> chr3_90000011_T_C</span>
-<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a><span class="dv">2</span> chr3  <span class="dv">90000261</span> GATT  G     <span class="fl">0.000291</span>  <span class="sc">-</span><span class="fl">0.0646</span>  <span class="fl">0.751</span>    <span class="fl">0.178</span> chr3_90000261_GA…</span>
-<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a><span class="dv">3</span> chr3  <span class="dv">90000274</span> T     A     <span class="fl">0.000238</span>  <span class="sc">-</span><span class="fl">0.0645</span>  <span class="fl">0.634</span>    <span class="fl">0.232</span> chr3_90000274_T_A</span>
-<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a><span class="dv">4</span> chr3  <span class="dv">90000324</span> C     A     <span class="fl">0.000163</span>   <span class="fl">0.0280</span>  <span class="fl">0.177</span>    <span class="fl">0.665</span> chr3_90000324_C_A</span>
-<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a><span class="dv">5</span> chr3  <span class="dv">90000366</span> T     G     <span class="fl">0.0000466</span> <span class="sc">-</span><span class="fl">0.0211</span>  <span class="fl">0.0644</span>   <span class="fl">0.862</span> chr3_90000366_T_G</span></code></pre></div>
-<p>Then create a manhattan plot:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="reference/manhattan.html">manhattan</a></span><span class="op">(</span>gwas <span class="op">=</span> <span class="va">gwas_stats</span>, output_prefix <span class="op">=</span> <span class="st">"my_manhattan"</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="fu">library</span>(gwasplot)</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="co"># Reformat summary statistics from a file</span></span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>gwas_stats <span class="ot">&lt;-</span> <span class="fu">reformat_summary_statistics</span>(<span class="st">"path/to/your/file.parquet"</span>)</span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="fu">print</span>(gwas_stats)</span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>GWAS object</span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a>File path<span class="sc">:</span> ..<span class="sc">/</span>concatenated_results.parquet</span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a>Detected format<span class="sc">:</span> regenie</span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a>Data names<span class="sc">:</span> CHROM, POS, ID, ALLELE0, ALLELE1, A1FREQ, N, BETA, SE, CHISQ, LOG10P, phenotype</span>
+<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a>Data preview<span class="sc">:</span></span>
+<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a><span class="co"># A tibble: 5 × 9</span></span>
+<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a>  CHROM      POS REF   ALT      AF_ALT     BETA  LOG10P PVALUE ID</span>
+<span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a>  <span class="sc">&lt;</span>chr<span class="sc">&gt;</span>    <span class="er">&lt;</span>dbl<span class="sc">&gt;</span> <span class="er">&lt;</span>chr<span class="sc">&gt;</span> <span class="er">&lt;</span>chr<span class="sc">&gt;</span>     <span class="er">&lt;</span>dbl<span class="sc">&gt;</span>    <span class="er">&lt;</span>dbl<span class="sc">&gt;</span>   <span class="er">&lt;</span>dbl<span class="sc">&gt;</span>  <span class="er">&lt;</span>dbl<span class="sc">&gt;</span> <span class="er">&lt;</span>chr<span class="sc">&gt;</span></span>
+<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a><span class="dv">1</span> chr3  <span class="dv">90000011</span> T     C     <span class="fl">0.000138</span>  <span class="sc">-</span><span class="fl">0.00157</span> <span class="fl">0.00753</span>  <span class="fl">0.983</span> chr3_90000011_T_C</span>
+<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a><span class="dv">2</span> chr3  <span class="dv">90000261</span> GATT  G     <span class="fl">0.000291</span>  <span class="sc">-</span><span class="fl">0.0646</span>  <span class="fl">0.751</span>    <span class="fl">0.178</span> chr3_90000261_GA…</span>
+<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a><span class="dv">3</span> chr3  <span class="dv">90000274</span> T     A     <span class="fl">0.000238</span>  <span class="sc">-</span><span class="fl">0.0645</span>  <span class="fl">0.634</span>    <span class="fl">0.232</span> chr3_90000274_T_A</span>
+<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a><span class="dv">4</span> chr3  <span class="dv">90000324</span> C     A     <span class="fl">0.000163</span>   <span class="fl">0.0280</span>  <span class="fl">0.177</span>    <span class="fl">0.665</span> chr3_90000324_C_A</span>
+<span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a><span class="dv">5</span> chr3  <span class="dv">90000366</span> T     G     <span class="fl">0.0000466</span> <span class="sc">-</span><span class="fl">0.0211</span>  <span class="fl">0.0644</span>   <span class="fl">0.862</span> chr3_90000366_T_G</span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="complete-analysis-pipeline">Complete Analysis Pipeline<a class="anchor" aria-label="anchor" href="#complete-analysis-pipeline"></a>
+</h2>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Load and reformat data</span></span>
+<span><span class="va">gwas_stats</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/reformat_summary_statistics.html">reformat_summary_statistics</a></span><span class="op">(</span><span class="st">"path/to/gwas_results.parquet"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Quality control: remove problematic regions</span></span>
+<span><span class="va">gwas_clean</span> <span class="op">&lt;-</span> <span class="va">gwas_stats</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="reference/exclude_difficult_regions.html">exclude_difficult_regions</a></span><span class="op">(</span>beds_exclude <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"hg19diff"</span>, <span class="st">"UCSC_unusual"</span>, <span class="st">"GRC_exclusions"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Get top hits and annotate with genes</span></span>
+<span><span class="va">top_hits</span> <span class="op">&lt;-</span> <span class="va">gwas_clean</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="reference/select_top_hits.html">select_top_hits</a></span><span class="op">(</span>threshold <span class="op">=</span> <span class="fl">5e-8</span><span class="op">)</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="reference/find_nearest_gene.html">find_nearest_gene</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="reference/annotate_with_chip_genes.html">annotate_with_chip_genes</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="reference/annotate_with_centromere.html">annotate_with_centromere</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Create plots</span></span>
+<span><span class="fu"><a href="reference/manhattan.html">manhattan</a></span><span class="op">(</span><span class="va">gwas_clean</span>, output_prefix <span class="op">=</span> <span class="st">"my_analysis"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/qqplot.html">qqplot</a></span><span class="op">(</span><span class="va">gwas_clean</span>, output_prefix <span class="op">=</span> <span class="st">"my_analysis"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Plot specific loci</span></span>
+<span><span class="fu"><a href="reference/locuszoom.html">locuszoom</a></span><span class="op">(</span><span class="va">top_hits</span>, locus_chr <span class="op">=</span> <span class="st">"chr2"</span>, locus_start <span class="op">=</span> <span class="fl">25000000</span>, locus_end <span class="op">=</span> <span class="fl">25500000</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="contact">Contact<a class="anchor" aria-label="anchor" href="#contact"></a>
+</h2>
+<p>Email Josh Weinstock. See our other work <a href="weinstocklab.org">here</a>.</p>
+</div>
 </div>
 
   </main><aside class="col-md-3"><div class="links">
@@ -157,7 +260,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.2.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer>
