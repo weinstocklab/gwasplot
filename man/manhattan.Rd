@@ -4,14 +4,16 @@
 \alias{manhattan}
 \title{Plot a Manhattan plot from a gwas object}
 \usage{
-manhattan(gwas, output_prefix, lower_logp_threshold = 3)
+manhattan(gwas, output, lower_logp_threshold = 3, ...)
 }
 \arguments{
 \item{gwas}{A gwas object containing the data to plot.}
 
-\item{output_prefix}{The prefix for the output file name.}
+\item{output}{The output file name.}
 
 \item{lower_logp_threshold}{The lower threshold for the -log10(p-value) to plot. Default is 3.0.}
+
+\item{...}{Additional arguments passed to `ggsave`.}
 }
 \description{
 Plot a Manhattan plot from a gwas object
