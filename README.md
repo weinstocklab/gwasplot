@@ -49,8 +49,84 @@ $ LOG10P    <dbl> 0.00752913, 0.75063100, 0.63391900, 0.17689500, 0.06437000
 gwastools will read in data from either regenie or saige and standarize the column names,
 and then create a table called `summary_stats` in a `duckdb` database. 
 
+# Key Features
+
+## Data Quality Control and Filtering
+
+**gwasplot** includes robust filtering capabilities to remove variants from problematic genomic regions that can lead to spurious associations:
+
+### Exclude Difficult Regions
+The `exclude_difficult_regions()` function removes variants from regions with known mapping difficulties:
+
+```r
+# Remove variants from multiple types of difficult regions
+gwas_filtered <- exclude_difficult_regions(gwas_stats, 
+                                         beds_exclude = c("hg19diff", "UCSC_unusual", "GRC_exclusions"))
+```
+
+Available region types include:
+- **hg19diff**: Regions with assembly differences between genome builds
+- **UCSC_unusual**: Unusual regions identified by UCSC (gaps, heterochromatin, etc.)
+- **GRC_exclusions**: Genome Reference Consortium exclusion regions
+- **GIAB_difficult_regions**: Genome in a Bottle difficult-to-map regions
+
+### Custom Variant Filtering
+Filter variants using custom whitelists or blacklists:
+
+```r
+# Keep only variants in a specific region or set
+filtered_gwas <- filter_variants(gwas_stats, subset = "my_variants.parquet")
+
+# Exclude specific variants
+filtered_gwas <- filter_variants(gwas_stats, exclude = "bad_variants.parquet")
+```
+
+## Gene Annotation
+
+Annotate variants with nearest protein-coding genes:
+
+```r
+# Add gene annotations
+annotated_gwas <- find_nearest_gene(gwas_stats, threshold = 1e5)  # 100kb window
+```
+
+Additional specialized annotations:
+- **CHIP genes**: `annotate_with_chip_genes()` - flags variants in clonal hematopoiesis genes
+- **Centromeres**: `annotate_with_centromere()` - identifies variants in centromeric regions  
+- **Immunoglobulin loci**: `annotate_with_immunoglobulin()` - flags variants in Ig heavy/light chain regions
+
+## Visualization
+
+### Manhattan Plots
+```r
+manhattan(gwas = gwas_stats, output_prefix = "my_manhattan")
+```
+
+### QQ Plots
+```r
+qqplot_save(gwas = gwas_stats, output_prefix = "my_qqplot")
+```
+
+### LocusZoom Plots
+Create detailed regional association plots with gene tracks:
+
+```r
+# Plot a specific locus with gene structure
+locuszoom(gwas_stats, locus_chr = "chr2", locus_start = 25000000, locus_end = 25500000)
+```
+
+### Volcano Plots
+For post-GWAS analysis (e.g., after empirical Bayes shrinkage):
+
+```r
+# Automatically uses lfsr if available, otherwise p-values
+volcano(gwas_data, phenotype_label = "My Phenotype")
+```
+
 # Usage
 Below are some sample usage examples:
+
+## Basic Workflow
 
 Reformat GWAS Summary Statistics
 Use the reformat_summary_statistics function to read and reformat GWAS summary statistics from a parquet or CSV file:
@@ -60,7 +136,7 @@ library(gwasplot)
 
 # Reformat summary statistics from a file
 gwas_stats <- reformat_summary_statistics("path/to/your/file.parquet")
-print(gwas_stats )
+print(gwas_stats)
 
 GWAS object
 File path: ../concatenated_results.parquet
@@ -77,8 +153,32 @@ Data preview:
 5 chr3  90000366 T     G     0.0000466 -0.0211  0.0644   0.862 chr3_90000366_T_G
 ```
 
-Then create a manhattan plot:
+## Complete Analysis Pipeline
 
 ```r
-manhattan(gwas = gwas_stats, output_prefix = "my_manhattan")
+# Load and reformat data
+gwas_stats <- reformat_summary_statistics("path/to/gwas_results.parquet")
+
+# Quality control: remove problematic regions
+gwas_clean <- gwas_stats %>%
+  exclude_difficult_regions(beds_exclude = c("hg19diff", "UCSC_unusual", "GRC_exclusions"))
+
+# Get top hits and annotate with genes
+top_hits <- gwas_clean %>%
+  select_top_hits(threshold = 5e-8) %>%
+  find_nearest_gene() %>%
+  annotate_with_chip_genes() %>%
+  annotate_with_centromere()
+
+# Create plots
+manhattan(gwas_clean, output_prefix = "my_analysis")
+qqplot(gwas_clean, output_prefix = "my_analysis")
+
+# Plot specific loci
+locuszoom(top_hits, locus_chr = "chr2", locus_start = 25000000, locus_end = 25500000)
 ```
+
+## Contact
+
+Email Josh Weinstock. 
+See our other work [here](weinstocklab.org).
