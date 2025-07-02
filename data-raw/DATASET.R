@@ -40,7 +40,7 @@ chip_genes = c("ASXL1", "ASXL2", "BCOR", "BCORL1", "BRAF", "BRCC3", "CBL", "CBLB
                  "PHIP", "PPM1D", "PRPF40B", "PRPF8", "PTEN", "PTPN11", "RAD21", 
                  "RUNX1", "SETBP1", "SETD2", "SETDB1", "SF1", "SF3A1", "SF3B1", 
                  "SRSF2", "SMC1A", "SMC3", "STAG1", "STAG2", "SUZ12", "TET2", "TP53", 
-                 "U2AF1", "U2AF2", "WT1", "ZRSR2", "ZBTB33", "YLPM1", "SRCAP", "ZNF318")
+                 "U2AF1", "U2AF2", "WT1", "ZRSR2", "ZBTB33", "YLPM1", "SRCAP", "STAT3", "ZNF318")
 
 usethis::use_data(chip_genes, overwrite = TRUE)
 
@@ -110,3 +110,33 @@ load("pheinfo.rda")
 
 pheinfo = tibble::as_tibble(pheinfo)
 usethis::use_data(pheinfo, overwrite = TRUE)
+
+gencode = rtracklayer::import.gff3(
+            "C:/Users/jwein22/Downloads/gencode.v48.chr_patch_hapl_scaff.basic.annotation.gff3.gz", 
+        ) %>%
+        as.data.frame() %>%
+        dplyr::select(
+            chrom = seqnames,
+            start,
+            end,
+            tag,
+            type,
+            exon_number,
+            gene_id,
+            gene_name,
+            gene_biotype = gene_type
+        ) %>%
+        tibble::as_tibble() %>%
+        dplyr::mutate(
+          is_MANE = purrr::map_lgl(
+            tag,
+            ~ "MANE_Select" %in% unlist(.x)
+          ),
+          chrom = as.character(chrom)
+        ) %>%
+        dplyr::filter(
+          type == "gene" | (type == "CDS" & is_MANE)
+        ) %>%
+        dplyr::select(-tag)
+
+usethis::use_data(gencode, overwrite = TRUE)
