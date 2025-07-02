@@ -185,4 +185,4 @@ locuszoom(gwas_clean, locus_chr = "chr2", locus_start = 25000000, locus_end = 25
 ## Contact
 
 Email Josh Weinstock. 
-See our other work [here](weinstocklab.org).
+See our other work [here](https://weinstocklab.org).
