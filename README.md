@@ -8,6 +8,11 @@ It is designed to work with output from GWAS performed on WGS data with many rar
 
 For more information, visit the [GitHub repository](https://github.com/weinstockj/gwasplot) or the [project website](https://weinstockj.github.io/gwasplot/).
 
+## Roadmap
+ - add LD into locuszoom plots, perhaps referencing this [setup](https://github.com/weinstockj/LD_REFERENCE_PANEL).
+ - build out OpenTargets API functionality for annotations
+ - add in helper functions to faciliate fine-mapping with other packages (e.g., SuSIE)
+
 # Installation
 
 Install the development version of **gwasplot** from GitHub:
