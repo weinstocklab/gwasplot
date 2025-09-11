@@ -2,7 +2,7 @@
 % Please edit documentation in R/annotate.R
 \name{query_ot_api_variants}
 \alias{query_ot_api_variants}
-\title{Query Open Targets Genetics API for variant information}
+\title{Query Open Targets Platform API for variant information}
 \usage{
 query_ot_api_variants(variant_id = "19_44908822_C_T")
 }
@@ -13,5 +13,5 @@ query_ot_api_variants(variant_id = "19_44908822_C_T")
 A data frame containing variant information.
 }
 \description{
-Query Open Targets Genetics API for variant information
+Query Open Targets Platform API for variant information
 }

@@ -10,7 +10,6 @@ For more information, visit the [GitHub repository](https://github.com/weinstock
 
 ## Roadmap
  - add LD into locuszoom plots, perhaps referencing this [setup](https://github.com/weinstockj/LD_REFERENCE_PANEL).
- - build out OpenTargets API functionality for annotations
  - add in helper functions to faciliate fine-mapping with other packages (e.g., SuSIE)
 
 # Installation

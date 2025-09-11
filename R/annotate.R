@@ -1,3 +1,6 @@
+# Helper function for null coalescing operator
+`%||%` <- function(x, y) if (is.null(x)) y else x
+
 #' Pull top hits from a GWASFormatter or a data.frame/tibble
 #'
 #' @param x A GWASFormatter object, data.frame, or tibble.
@@ -454,6 +457,28 @@ annotate_with_immunoglobulin.GWASFormatter = function(x, ...) {
   return(x)
 }
 
+#' Query Open Targets Platform API for Locus-to-Gene (L2G) predictions
+#'
+#' This function retrieves L2G predictions from credible sets containing the specified variant.
+#' It replaces the deprecated V2G functionality from the old Open Targets Genetics API.
+#'
+#' @param variant_id A string representing the variant ID in format "CHR_POS_REF_ALT" 
+#'   (e.g., "19_44908822_C_T") or an rsID (e.g., "rs123456").
+#' @param pageindex Pagination index (currently unused in new API structure).
+#' @param pagesize Pagination size (currently unused in new API structure).
+#' @return A list containing L2G predictions and associated data from credible sets.
+#' @note This function has been migrated from the deprecated Open Targets Genetics API
+#'   to the new Open Targets Platform API. The functionality has changed from direct
+#'   variant-to-gene mapping to locus-to-gene predictions via credible sets.
+#' @examples
+#' \dontrun{
+#'   # Query by variant ID
+#'   result <- query_ot_api_v2g("19_44908822_C_T")
+#'   
+#'   # Query by rsID  
+#'   result <- query_ot_api_v2g("rs123456")
+#' }
+#' @export
 query_ot_api_v2g = function(variant_id = "19_44908822_C_T", pageindex = 0, pagesize = 20) {
 
 
@@ -462,231 +487,226 @@ query_ot_api_v2g = function(variant_id = "19_44908822_C_T", pageindex = 0, pages
 }
 
 genesForVariant <- function(variant_id) {
-  ## Set up to query Open Targets Genetics API
+  ## Set up to query Open Targets Platform API (migrated from deprecated Genetics API)
   tryCatch({
-    cli::cli_progress_step("Connecting to the Open Targets Genetics GraphQL API...", spinner = TRUE)
-    otg_cli <- ghql::GraphqlClient$new(url = "https://api.genetics.opentargets.org/graphql")
+    cli::cli_progress_step("Connecting to the Open Targets Platform GraphQL API...", spinner = TRUE)
+    otg_cli <- ghql::GraphqlClient$new(url = "https://api.platform.opentargets.org/api/v4/graphql")
     otg_qry <- ghql::Query$new()
 
     # Check variant id format
     if (grepl(pattern = "rs\\d+", variant_id)) {
-      # Convert rs id to variant id
-      query_searchid <- "query ConvertRSIDtoVID($queryString:String!) {
-        search(queryString:$queryString){
-          totalVariants
-          variants{
+      # Convert rs id to variant id using new Platform API search
+      query_searchid <- "query SearchQuery($queryString: String!, $index: Int!, $entityNames: [String!]!) {
+        search(
+          queryString: $queryString
+          entityNames: $entityNames
+          page: {index: $index, size: 10}
+        ) {
+          total
+          hits {
             id
+            object {
+              ... on Variant {
+                id
+                variantDescription
+                referenceAllele
+                alternateAllele
+                rsIds
+                __typename
+              }
+            }
           }
         }
       }"
 
-      variables <- list(queryString = variant_id)
+      variables <- list(
+        queryString = variant_id,
+        index = 0L,
+        entityNames = list("Variant")
+      )
 
       otg_qry$query(name = "convertid", x = query_searchid)
       id_result <- jsonlite::fromJSON(otg_cli$exec(otg_qry$queries$convertid, variables), flatten = TRUE)$data
-      input_variant_id <- id_result$search$variants$id
+      
+      # Filter for variant objects and get the first variant ID
+      variant_hits <- id_result$search$hits
+      variant_objects <- variant_hits[sapply(variant_hits$object, function(x) !is.null(x$`__typename`) && x$`__typename` == "Variant"), ]
+      
+      if (length(variant_objects) == 0 || is.null(variant_objects$object[[1]]$id)) {
+        stop(paste("No variant found for rsID:", variant_id))
+      }
+      
+      input_variant_id <- variant_objects$object[[1]]$id
     } else if (grepl(pattern = "\\d+_\\d+_[a-zA-Z]+_[a-zA-Z]+", variant_id)) {
       input_variant_id <- variant_id
     } else {
       stop("\nPlease provide a variant ID.")
     }
 
-    query <- "query v2gquery($variantId: String!){
-  genesForVariant(variantId: $variantId) {
-    gene{
-      id
-      symbol
-    }
-    variant
-    overallScore
-    qtls{
-      typeId
-      aggregatedScore
-      tissues{
-        tissue{
-          id
-          name
+    # New Platform API query for L2G predictions via credible sets
+    # This replaces the old genesForVariant query which is no longer available
+    query <- "query GWASCredibleSetsQuery($variantId: String!, $size: Int!, $index: Int!) {
+      variant(variantId: $variantId) {
+        id
+        referenceAllele
+        alternateAllele
+        chromosome
+        position
+        credibleSets(studyTypes: [gwas], page: { size: $size, index: $index }) {
+          count
+          rows {
+            studyLocusId
+            pValueMantissa
+            pValueExponent
+            beta
+            finemappingMethod
+            confidence
+            study {
+              traitFromSource
+              id
+              diseases {
+                name
+                id
+              }
+            }
+            l2GPredictions(page: {index: 0, size: 100}) {
+              rows {
+                score
+                target {
+                  id
+                  approvedSymbol
+                }
+                features {
+                  name
+                  value
+                  shapValue
+                }
+              }
+            }
+            locus(variantIds: [$variantId]) {
+              rows {
+                posteriorProbability
+                pValueExponent
+                pValueMantissa
+                beta
+                is95CredibleSet
+                is99CredibleSet
+                variant {
+                  id
+                  rsIds
+                }
+              }
+            }
+          }
         }
-        quantile
-        beta
-        pval
       }
-    }
-    intervals{
-      typeId
-      sourceId
-      aggregatedScore
-      tissues{
-        tissue{
-          id
-          name
-        }
-        quantile
-        score
-      }
-    }
-    functionalPredictions{
-      typeId
-      sourceId
-      aggregatedScore
-      tissues{
-        tissue{
-          id
-          name
-        }
-        maxEffectLabel
-        maxEffectScore
-      }
-    }
-    distances{
-      typeId
-      sourceId
-      aggregatedScore
-      tissues{
-        tissue{
-          id
-          name
-        }
-        distance
-        score
-        quantile
-      }
-    }
-  }
-}"
+    }"
 
     ## Execute the query
 
     result_pkg <- list()
 
-    variables <- list(variantId = input_variant_id)
+    variables <- list(
+      variantId = input_variant_id,
+      size = 500L,
+      index = 0L
+    )
 
-    otg_qry$query(name = "v2g_query", x = query)
-    cli::cli_progress_step(paste0("Downloading data for ", variant_id, " ..."), spinner = TRUE)
+    otg_qry$query(name = "l2g_query", x = query)
+    cli::cli_progress_step(paste0("Downloading L2G data for ", variant_id, " ..."), spinner = TRUE)
 
-    result <- jsonlite::fromJSON(otg_cli$exec(otg_qry$queries$v2g_query, variables), flatten = TRUE)$data
-    result_df <- as.data.frame(result$genesForVariant)
+    result <- jsonlite::fromJSON(otg_cli$exec(otg_qry$queries$l2g_query, variables), flatten = TRUE)$data
+    
+    # Extract L2G predictions from credible sets
+    if (!is.null(result$variant$credibleSets$rows) && length(result$variant$credibleSets$rows) > 0) {
+      # Aggregate L2G predictions across all credible sets
+      all_l2g_predictions <- list()
+      
+      for (i in seq_along(result$variant$credibleSets$rows)) {
+        credible_set <- result$variant$credibleSets$rows[[i]]
+        if (!is.null(credible_set$l2GPredictions$rows) && length(credible_set$l2GPredictions$rows) > 0) {
+          l2g_data <- credible_set$l2GPredictions$rows
+          
+          # Add credible set context
+          for (j in seq_along(l2g_data)) {
+            l2g_data[[j]]$studyLocusId <- credible_set$studyLocusId
+            l2g_data[[j]]$traitFromSource <- credible_set$study$traitFromSource
+            l2g_data[[j]]$variant <- input_variant_id
+          }
+          
+          all_l2g_predictions <- c(all_l2g_predictions, l2g_data)
+        }
+      }
+      
+      if (length(all_l2g_predictions) > 0) {
+        # Convert to data frame format similar to old genesForVariant output
+        result_df <- data.frame(
+          gene.symbol = sapply(all_l2g_predictions, function(x) x$target$approvedSymbol %||% NA_character_),
+          gene.id = sapply(all_l2g_predictions, function(x) x$target$id %||% NA_character_),
+          variant = sapply(all_l2g_predictions, function(x) x$variant %||% NA_character_),
+          overallScore = sapply(all_l2g_predictions, function(x) x$score %||% NA_real_),
+          studyLocusId = sapply(all_l2g_predictions, function(x) x$studyLocusId %||% NA_character_),
+          traitFromSource = sapply(all_l2g_predictions, function(x) x$traitFromSource %||% NA_character_),
+          stringsAsFactors = FALSE
+        )
+        
+        # Remove duplicates and sort by score
+        result_df <- result_df[!duplicated(paste(result_df$gene.symbol, result_df$variant)), ]
+        result_df <- result_df[order(result_df$overallScore, decreasing = TRUE), ]
+        
+        # Create simplified output similar to old format
+        result_core <- result_df %>%
+          dplyr::select(gene.symbol, variant, overallScore, gene.id) %>%
+          dplyr::arrange(desc(overallScore))
 
-    if (nrow(result_df) != 0) {
-      # parsing the nested JSON output in tidy data table format
-      result_core <- result_df %>%
-        dplyr::select(gene.symbol, variant, overallScore, gene.id) %>%
-        dplyr::arrange(desc(overallScore))
-
-      # qtl
-      qtls_is_empty <-  all(sapply(result_df$qtls, function(x) length(x) == 0))
-
-      if (qtls_is_empty) {
+        # Note: QTL data structure has changed significantly in Platform API
+        # For backward compatibility, create empty QTL columns
         result_qtl <- result_df %>%
-          dplyr::select(gene.symbol, variant, qtls)
-        result_qtl <- result_qtl %>%
-          mutate(qtls = ifelse(sapply(qtls, length) == 0, NA_character_, toString(qtls)))
-      } else {
-        result_qtl <- result_df %>%
-          dplyr::select(gene.symbol, variant, qtls) %>%
-          tidyr::unnest(qtls, names_sep = '.', keep_empty = TRUE) %>%
-          dplyr::rename("typeId" = "qtls.typeId",
-                        "aggregatedScore" = "qtls.aggregatedScore")
+          dplyr::select(gene.symbol, variant) %>%
+          dplyr::mutate(qtls = NA_character_)
 
-        if ("qtls.tissues" %in% colnames(result_qtl)) {
-      result_qtl <- result_qtl %>%
-            tidyr::unnest(qtls.tissues, names_sep = '_', keep_empty = TRUE ) %>%
-            dplyr::rename("tissues_id" = "qtls.tissues_tissue.id",
-                          "tissues_name" = "qtls.tissues_tissue.name")
-          base::colnames(result_qtl) <- stringr::str_replace_all(colnames(result_qtl), "qtls.", "")
-        }
-      }
-
-      # intervals
-      ints_is_empty <-  all(sapply(result_df$intervals, function(x) length(x) == 0))
-
-      if (ints_is_empty) {
+        # Note: Intervals data structure has changed significantly in Platform API  
+        # For backward compatibility, create empty intervals columns
         result_intervals <- result_df %>%
-          dplyr::select(gene.symbol, variant, intervals)
-        result_intervals <- result_intervals %>%
-          mutate(intervals = ifelse(sapply(intervals, length) == 0, NA_character_, toString(intervals)))
-      } else {
-        result_intervals <- result_df %>%
-          dplyr::select(gene.symbol, variant, intervals) %>%
-          tidyr::unnest(intervals, names_sep = '.', keep_empty = TRUE) %>%
-          dplyr::rename("typeId" = "intervals.typeId",
-                        "aggregatedScore" = "intervals.aggregatedScore")
+          dplyr::select(gene.symbol, variant) %>%
+          dplyr::mutate(intervals = NA_character_)
 
-        if ("intervals.tissues" %in% colnames(result_intervals)) {
-        result_intervals <- result_intervals %>%
-            tidyr::unnest(intervals.tissues, names_sep = '_', keep_empty = TRUE) %>%
-            dplyr::rename("tissues_id" = "intervals.tissues_tissue.id",
-                          "tissues_name" = "intervals.tissues_tissue.name")
-          base::colnames(result_intervals) <- stringr::str_replace_all(colnames(result_intervals), "intervals.", "")
-        }
-      }
-
-      # distances
-      dists_is_empty <- all(sapply(result_df$distances, function(x) length(x) == 0))
-
-      if (dists_is_empty) {
-        result_distances <- result_df %>%
-          dplyr::select(gene.symbol, variant, distances)
-        result_distances <- result_distances %>%
-          mutate(distances = ifelse(sapply(distances, length) == 0, NA_character_, toString(distances)))
-      } else {
-        result_distances <- result_df %>%
-          dplyr::select(gene.symbol, variant, distances) %>%
-          tidyr::unnest(distances, names_sep = '.', keep_empty = TRUE) %>%
-          dplyr::rename("typeId" = "distances.typeId",
-                        "aggregatedScore" = "distances.aggregatedScore")
-
-        if ("distances.tissues" %in% colnames(result_distances)) {
-          result_distances <- result_distances %>%
-            tidyr::unnest(distances.tissues, names_sep = '_', keep_empty = TRUE) %>%
-            dplyr::rename("tissues_id" = "distances.tissues_tissue.id",
-                          "tissues_name" = "distances.tissues_tissue.name")
-          base::colnames(result_distances) <- stringr::str_replace_all(colnames(result_distances), "distances.", "")
-        }
-      }
-
-      # result_functionalPredictions
-      funcPreds_is_empty <- all(sapply(result_df$functionalPredictions, function(x) length(x) == 0))
-
-      if (funcPreds_is_empty) {
+        # Note: Functional predictions and distances are not directly available in new Platform API
+        # For backward compatibility, create empty columns
         result_functionalPredictions <- result_df %>%
-          dplyr::select(gene.symbol, variant, functionalPredictions)
-        result_functionalPredictions <- result_functionalPredictions %>%
-          mutate(functionalPredictions = ifelse(sapply(functionalPredictions, length) == 0, NA_character_, toString(functionalPredictions)))
+          dplyr::select(gene.symbol, variant) %>%
+          dplyr::mutate(functionalPredictions = NA_character_)
+          
+        result_distances <- result_df %>%
+          dplyr::select(gene.symbol, variant) %>%
+          dplyr::mutate(distances = NA_character_)
+
+        result_pkg$core <- result_core
+        result_pkg$qtls <- result_qtl
+        result_pkg$intervals <- result_intervals
+        result_pkg$functionalPredictions <- result_functionalPredictions
+        result_pkg$distances <- result_distances
+        
+        return(result_pkg)
       } else {
-        result_functionalPredictions <- result_df %>%
-          dplyr::select(gene.symbol, variant, functionalPredictions) %>%
-          tidyr::unnest(functionalPredictions, names_sep = '.', keep_empty = TRUE) %>%
-          dplyr::rename("typeId" = "functionalPredictions.typeId",
-                        "aggregatedScore" = "functionalPredictions.aggregatedScore")
-
-        if ("functionalPredictions.tissues" %in% colnames(result_functionalPredictions)) {
-          result_functionalPredictions <- result_functionalPredictions %>%
-            tidyr::unnest(functionalPredictions.tissues, names_sep = '_', keep_empty = TRUE) %>%
-            dplyr::rename("tissues_id" = "functionalPredictions.tissues_tissue.id",
-                          "tissues_name" = "functionalPredictions.tissues_tissue.name")
-          base::colnames(result_functionalPredictions) <- stringr::str_replace_all(colnames(result_functionalPredictions), "functionalPredictions.", "")
-        }
+        warning("No L2G predictions found for variant: ", variant_id)
+        return(NULL)
       }
-
-      result_pkg <- list(v2g = result_core, tssd = result_distances,
-                         qtls = result_qtl, chromatin = result_intervals,
-                         functionalpred = result_functionalPredictions)
+    } else {
+      warning("No credible sets found for variant: ", variant_id)
+      return(NULL)
     }
-    cli::cli_progress_update()
-    return(result_pkg)
 
   }, error = function(e) {
-    # Handling connection timeout
-    if(grepl("Timeout was reached", e$message)) {
-      stop("Connection timeout reached while connecting to the Open Targets Genetics GraphQL API.")
+    if (grepl("timeout", e$message, ignore.case = TRUE)) {
+      stop("Connection timeout reached while connecting to the Open Targets Platform GraphQL API.")
     } else {
-      stop(e) # Handle other types of errors
+      stop("Error querying Open Targets Platform API: ", e$message)
     }
   })
 }
 
-#' Query Open Targets Genetics API for variant information
+#' Query Open Targets Platform API for variant information
 #'  
 #' @param variant_id A string representing the variant ID (e.g., "19_44908822_C_T").
 #' @return A data frame containing variant information.
@@ -701,27 +721,55 @@ query_ot_api_variants <- function(variant_id = "19_44908822_C_T") {
 
   # Try-catch block for handling connection timeout
   tryCatch({
-    # Set up to query Open Targets Genetics API
-    cli::cli_progress_step("Connecting to the Open Targets Genetics GraphQL API...", spinner = TRUE)
-    otg_cli <- ghql::GraphqlClient$new(url = "https://api.genetics.opentargets.org/graphql")
+    # Set up to query Open Targets Platform API (migrated from deprecated Genetics API)
+    cli::cli_progress_step("Connecting to the Open Targets Platform GraphQL API...", spinner = TRUE)
+    otg_cli <- ghql::GraphqlClient$new(url = "https://api.platform.opentargets.org/api/v4/graphql")
     otg_qry <- ghql::Query$new()
 
     # Check variant id format
     if (grepl(pattern = "rs\\d+", variant_id)) {
-      # Convert rs id to variant id
-      query_searchid <- "query rsi2vid($queryString:String!) {
-      search(queryString:$queryString){
-        totalVariants
-        variants{
-          id
+      # Convert rs id to variant id using new Platform API search
+      query_searchid <- "query SearchQuery($queryString: String!, $index: Int!, $entityNames: [String!]!) {
+        search(
+          queryString: $queryString
+          entityNames: $entityNames
+          page: {index: $index, size: 10}
+        ) {
+          total
+          hits {
+            id
+            object {
+              ... on Variant {
+                id
+                variantDescription
+                referenceAllele
+                alternateAllele
+                rsIds
+                __typename
+              }
+            }
           }
         }
       }"
 
-      variables <- list(queryString = variant_id)
+      variables <- list(
+        queryString = variant_id,
+        index = 0L,
+        entityNames = list("Variant")
+      )
+      
       otg_qry$query(name = "rsi2vid", x = query_searchid)
       id_result <- jsonlite::fromJSON(otg_cli$exec(otg_qry$queries$rsi2vid, variables), flatten = TRUE)$data
-      input_variant_id <- id_result$search$variants$id
+      
+      # Filter for variant objects and get the first variant ID
+      variant_hits <- id_result$search$hits
+      variant_objects <- variant_hits[sapply(variant_hits$object, function(x) !is.null(x$`__typename`) && x$`__typename` == "Variant"), ]
+      
+      if (length(variant_objects) == 0 || is.null(variant_objects$object[[1]]$id)) {
+        stop(paste("No variant found for rsID:", variant_id))
+      }
+      
+      input_variant_id <- variant_objects$object[[1]]$id
     } else if (grepl(pattern = "\\d+_\\d+_[a-zA-Z]+_[a-zA-Z]+", variant_id)) {
       input_variant_id <- variant_id
     } else {
@@ -730,48 +778,792 @@ query_ot_api_variants <- function(variant_id = "19_44908822_C_T") {
 
     # Check if the input_variant_id is null or empty
     if (is.null(input_variant_id) || input_variant_id == "") {
-      stop("There is no variant ID defined for this rsID by Open Target Genetics")
+      stop("There is no variant ID defined for this rsID by Open Targets Platform")
     }
 
-    # Define the query
-    query <- "query variantInfoquery($variantId: String!){
-    variantInfo(variantId: $variantId){
-      rsId
-      id
-      nearestGeneDistance
-      nearestCodingGene{
+    # Define the query for new Platform API
+    query <- "query VariantInfoQuery($variantId: String!) {
+      variant(variantId: $variantId) {
         id
-        symbol
+        rsIds
+        chromosome
+        position
+        referenceAllele
+        alternateAllele
+        variantDescription
+        mostSevereConsequence {
+          id
+          label
+        }
+        alleleFrequencies {
+          populationName
+          alleleFrequency
+        }
+        transcriptConsequences {
+          target {
+            id
+            approvedSymbol
+          }
+          distanceFromTss
+          impact
+        }
       }
-      nearestCodingGeneDistance
-      mostSevereConsequence
-      caddPhred
-      gnomadNFE
-      gnomadAFR
-      gnomadAMR
-      gnomadEAS
-    }
-  }"
+    }"
 
     # Execute the query
     variables <- list(variantId = input_variant_id)
     otg_qry$query(name = "variantInfoquery", x = query)
-    cli::cli_progress_step("Downloading data...", spinner = TRUE)
+    cli::cli_progress_step("Downloading variant data...", spinner = TRUE)
     var_info <- jsonlite::fromJSON(otg_cli$exec(otg_qry$queries$variantInfoquery, variables), flatten = TRUE)$data
 
-    # Flatten and return data frame
-    flat_var_info <- unlist(var_info$variantInfo)
-    df_var_info <- as.data.frame(t(flat_var_info))
-    names(df_var_info) <- names(flat_var_info)
-    return(df_var_info)
+    # Process and return data frame compatible with old format
+    if (!is.null(var_info$variant)) {
+      variant_data <- var_info$variant
+      
+      # Find nearest gene from transcript consequences
+      nearest_gene_symbol <- NA_character_
+      nearest_gene_id <- NA_character_
+      nearest_gene_distance <- NA_real_
+      
+      if (!is.null(variant_data$transcriptConsequences) && length(variant_data$transcriptConsequences) > 0) {
+        # Find the transcript consequence with minimum distance
+        min_dist_idx <- which.min(sapply(variant_data$transcriptConsequences, function(x) abs(x$distanceFromTss %||% Inf)))
+        if (length(min_dist_idx) > 0) {
+          nearest_tc <- variant_data$transcriptConsequences[[min_dist_idx]]
+          nearest_gene_symbol <- nearest_tc$target$approvedSymbol
+          nearest_gene_id <- nearest_tc$target$id
+          nearest_gene_distance <- nearest_tc$distanceFromTss
+        }
+      }
+      
+      # Extract allele frequencies
+      gnomad_nfe <- NA_real_
+      gnomad_afr <- NA_real_
+      gnomad_amr <- NA_real_
+      gnomad_eas <- NA_real_
+      
+      if (!is.null(variant_data$alleleFrequencies)) {
+        for (af in variant_data$alleleFrequencies) {
+          if (grepl("NFE", af$populationName, ignore.case = TRUE)) gnomad_nfe <- af$alleleFrequency
+          if (grepl("AFR", af$populationName, ignore.case = TRUE)) gnomad_afr <- af$alleleFrequency
+          if (grepl("AMR", af$populationName, ignore.case = TRUE)) gnomad_amr <- af$alleleFrequency
+          if (grepl("EAS", af$populationName, ignore.case = TRUE)) gnomad_eas <- af$alleleFrequency
+        }
+      }
+      
+      # Create data frame compatible with old format
+      df_var_info <- data.frame(
+        id = variant_data$id %||% NA_character_,
+        rsId = paste(variant_data$rsIds, collapse = ",") %||% NA_character_,
+        nearestCodingGene.symbol = nearest_gene_symbol,
+        nearestCodingGene.id = nearest_gene_id,
+        nearestCodingGeneDistance = nearest_gene_distance,
+        nearestGeneDistance = nearest_gene_distance, # Same as coding gene distance for compatibility
+        mostSevereConsequence = variant_data$mostSevereConsequence$label %||% NA_character_,
+        caddPhred = NA_real_, # CADD scores not available in Platform API
+        gnomadNFE = gnomad_nfe,
+        gnomadAFR = gnomad_afr,
+        gnomadAMR = gnomad_amr,
+        gnomadEAS = gnomad_eas,
+        stringsAsFactors = FALSE
+      )
+      
+      return(df_var_info)
+    } else {
+      stop("No variant information found for ID: ", input_variant_id)
+    }
 
   }, error = function(e) {
     # Handling connection timeout
     if(grepl("Timeout was reached", e$message)) {
-      warning("Connection timeout reached while connecting to the Open Targets Genetics GraphQL API.")
+      warning("Connection timeout reached while connecting to the Open Targets Platform GraphQL API.")
     } else {
-      warning(e) # Handle other types of errors
+      warning("Error querying Open Targets Platform API: ", e$message)
     }
     return(NULL)
   })
+}
+
+#' Annotate variants with functional consequences using Ensembl VEP API
+#'
+#' This function queries the Ensembl Variant Effect Predictor (VEP) REST API
+#' to annotate a list of variants with their functional consequences. It processes
+#' variants in batches to respect API rate limits and returns detailed consequence
+#' information including transcript effects, protein changes, and regulatory impacts.
+#'
+#' @param variants A character vector containing variant information in the format
+#'   "chr_pos_ref_alt" (e.g., "chr21_26960070_G_A" or "21_26960070_G_A").
+#' @param batch_size Integer specifying the number of variants to process per API call.
+#'   Default is 200 (max 1000). Smaller batches are more reliable for large datasets.
+#' @param flag_pick Logical. If TRUE, only report the transcript with the PICK flag.
+#'   Default is TRUE to get the single best transcript per variant.
+#' @param include_hgvs Logical. If TRUE, include HGVS nomenclature in results. Default is TRUE.
+#' @param include_domains Logical. If TRUE, include protein domain information. Default is FALSE.
+#' @param include_regulatory Logical. If TRUE, include regulatory feature consequences. Default is FALSE.
+#' @param sleep_time Numeric. Time in seconds to wait between API calls to respect rate limits.
+#'   Default is 1 second. Increase if you encounter rate limiting.
+#' @param verbose Logical. If TRUE, print progress messages. Default is TRUE.
+#'
+#' @return A tibble containing variant consequences with the following columns:
+#'   \itemize{
+#'     \item ID - Original variant string
+#'     \item CHROM - Chromosome (extracted from variant)
+#'     \item POS - Position (extracted from variant)
+#'     \item REF - Reference allele (extracted from variant)
+#'     \item ALT - Alternate allele (extracted from variant)
+#'     \item most_severe_consequence - Most severe consequence for the variant
+#'     \item gene_id - Ensembl gene ID
+#'     \item gene_symbol - Gene symbol
+#'     \item transcript_id - Ensembl transcript ID
+#'     \item consequence_terms - All consequence terms (comma-separated)
+#'     \item impact - Impact level (HIGH, MODERATE, LOW, MODIFIER)
+#'     \item protein_position - Position in protein sequence
+#'     \item amino_acids - Reference and alternate amino acids
+#'     \item codons - Reference and alternate codons
+#'     \item existing_variation - Known variant IDs (e.g., rsIDs)
+#'     \item hgvsc - HGVS coding sequence nomenclature (if include_hgvs=TRUE)
+#'     \item hgvsp - HGVS protein nomenclature (if include_hgvs=TRUE)
+#'     \item domains - Protein domains affected (if include_domains=TRUE)
+#'   }
+#'
+#' @details
+#' The function handles variant input in the format "chr_pos_ref_alt":
+#' \itemize{
+#'   \item Input format: "chr21_26960070_G_A" or "21_26960070_G_A"
+#'   \item Automatic rate limiting to respect Ensembl's 15 requests/second limit
+#'   \item Batch processing for efficient handling of large variant lists
+#'   \item Error handling and retry logic for failed requests
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' # Example 1: Single variant
+#' variants <- "chr21_26960070_G_A"
+#' consequences <- annotate_variants_ensembl(variants)
+#'
+#' # Example 2: Multiple variants
+#' variants <- c(
+#'   "chr21_26960070_G_A",
+#'   "21_26965148_G_A",
+#'   "chrX_155066068_C_T"
+#' )
+#' consequences <- annotate_variants_ensembl(variants)
+#'
+#' # Example 3: With additional options
+#' consequences <- annotate_variants_ensembl(
+#'   variants,
+#'   flag_pick = TRUE,
+#'   include_domains = TRUE,
+#'   batch_size = 100
+#' )
+#' }
+#'
+#' @note
+#' \itemize{
+#'   \item Respects Ensembl API rate limits (15 requests/second)
+#'   \item Large variant lists are automatically batched
+#'   \item Requires internet connection to Ensembl REST API
+#'   \item For very large datasets (>10,000 variants), consider using local VEP installation
+#'   \item Only supports human variants (homo_sapiens)
+#' }
+#'
+#' @references
+#' McLaren et al. (2016). The Ensembl Variant Effect Predictor. 
+#' Genome Biology 17, 122. doi:10.1186/s13059-016-0974-4
+#'
+#' @seealso
+#' \url{https://rest.ensembl.org/documentation/info/vep_region_post}
+#' \url{https://github.com/Ensembl/ensembl-vep}
+#'
+#' @export
+annotate_variants_ensembl <- function(variants,
+                                     batch_size = 200,
+                                     flag_pick = TRUE,  # Use flag_pick instead of canonical_only
+                                     include_hgvs = TRUE,
+                                     include_domains = FALSE,
+                                     include_regulatory = FALSE,
+                                     sleep_time = 1,
+                                     verbose = FALSE) {
+  
+  # Load required packages
+  # Validate inputs
+  if (length(variants) == 0) {
+    stop("No variants provided")
+  }
+  
+  if (batch_size > 1000) {
+    warning("Batch size > 1000 may cause API errors. Consider using smaller batches.")
+    batch_size <- 1000
+  }
+  
+  # Convert input to standard format
+  variant_strings <- format_variants_for_vep(variants)
+  
+  if (verbose) {
+    message(sprintf("Annotating %d variants using Ensembl VEP API", length(variant_strings)))
+    message(sprintf("Processing in batches of %d variants", batch_size))
+  }
+  
+  # Split variants into batches
+  n_variants <- length(variant_strings)
+  n_batches <- ceiling(n_variants / batch_size)
+  
+  all_results <- list()
+  
+  # Process each batch
+  for (i in 1:n_batches) {
+    if (verbose) {
+      message(sprintf("Processing batch %d of %d...", i, n_batches))
+    }
+    
+    # Calculate batch indices
+    start_idx <- (i - 1) * batch_size + 1
+    end_idx <- min(i * batch_size, n_variants)
+    batch_variants <- variant_strings[start_idx:end_idx]
+    
+    # Query VEP API for this batch
+    batch_result <- query_vep_batch(
+      batch_variants,
+      flag_pick = flag_pick,
+      include_hgvs = include_hgvs,
+      include_domains = include_domains,
+      include_regulatory = include_regulatory,
+      verbose = verbose
+    )
+    
+    if (!is.null(batch_result)) {
+      all_results[[i]] <- batch_result
+    }
+    
+    # Rate limiting: sleep between requests (except for the last batch)
+    if (i < n_batches && sleep_time > 0) {
+      Sys.sleep(sleep_time)
+    }
+  }
+  
+  # Combine all results
+  if (length(all_results) == 0) {
+    warning("No results returned from VEP API")
+    return(tibble::tibble())
+  }
+  
+  final_results <- dplyr::bind_rows(all_results)
+  
+  # Parse original variants to extract CHROM, POS, REF, ALT
+  # Convert VCF format back to original variant format for joining
+  final_results$original_variant <- sapply(final_results$input, function(vcf_string) {
+    # VCF format: "chr pos id ref alt qual filter info"
+    parts <- strsplit(vcf_string, " ")[[1]]
+    if (length(parts) >= 5) {
+      chr <- parts[1]
+      pos <- parts[2]
+      ref <- parts[4]
+      alt <- parts[5]
+      
+      # Add chr prefix if not present
+      if (!grepl("^chr", chr)) {
+        chr <- paste0("chr", chr)
+      }
+      
+      return(paste(chr, pos, ref, alt, sep = "_"))
+    }
+    return(NA_character_)
+  })
+  
+  # Parse original variants for CHROM, POS, REF, ALT
+  parsed_variants <- parse_variants_for_output(variants)
+  
+  # Join with parsed variant information
+  final_results <- final_results %>%
+    dplyr::left_join(parsed_variants, by = c("original_variant" = "original")) %>%
+    dplyr::select(ID = original_variant, CHROM, POS, REF, ALT, 
+                  most_severe_consequence, gene_id, gene_symbol, transcript_id,
+                  consequence_terms, impact, protein_position, amino_acids,
+                  codons, existing_variation, hgvsc, hgvsp, domains) %>%
+    tibble::as_tibble()
+  
+  if (verbose) {
+    message(sprintf("Successfully annotated %d variants", nrow(final_results)))
+  }
+  
+  return(final_results)
+}
+
+#' Format variants for VEP API input
+#'
+#' @param variants Input variants in format "chr_pos_ref_alt"
+#' @return Character vector of VCF-formatted variant strings
+#' @keywords internal
+format_variants_for_vep <- function(variants) {
+  if (!is.character(variants)) {
+    stop("Variants must be a character vector in format 'chr_pos_ref_alt'")
+  }
+  
+  # Parse variants in format "chr_pos_ref_alt"
+  vcf_strings <- sapply(variants, function(variant) {
+    parts <- strsplit(variant, "_")[[1]]
+    
+    if (length(parts) != 4) {
+      stop(sprintf("Invalid variant format: %s. Expected format: 'chr_pos_ref_alt'", variant))
+    }
+    
+    chr <- parts[1]
+    pos <- parts[2]
+    ref <- parts[3]
+    alt <- parts[4]
+    
+    # Remove 'chr' prefix if present
+    chr <- gsub("^chr", "", chr)
+    
+    # Create VCF-like string: chr pos id ref alt qual filter info
+    paste(chr, pos, ".", ref, alt, ".", ".", ".")
+  }, USE.NAMES = FALSE)
+  
+  return(vcf_strings)
+}
+
+#' Parse variants to extract CHROM, POS, REF, ALT for output
+#'
+#' @param variants Input variants in format "chr_pos_ref_alt"
+#' @return data.frame with original variant and parsed components
+#' @keywords internal
+parse_variants_for_output <- function(variants) {
+  if (!is.character(variants)) {
+    stop("Variants must be a character vector in format 'chr_pos_ref_alt'")
+  }
+  
+  # Parse variants in format "chr_pos_ref_alt"
+  parsed <- data.frame(
+    original = variants,
+    CHROM = character(length(variants)),
+    POS = integer(length(variants)),
+    REF = character(length(variants)),
+    ALT = character(length(variants)),
+    stringsAsFactors = FALSE
+  )
+  
+  for (i in seq_along(variants)) {
+    variant <- variants[i]
+    parts <- strsplit(variant, "_")[[1]]
+    
+    if (length(parts) != 4) {
+      stop(sprintf("Invalid variant format: %s. Expected format: 'chr_pos_ref_alt'", variant))
+    }
+    
+    parsed$CHROM[i] <- parts[1]
+    parsed$POS[i] <- as.integer(parts[2])
+    parsed$REF[i] <- parts[3]
+    parsed$ALT[i] <- parts[4]
+  }
+  
+  return(parsed)
+}
+
+#' Query VEP API for a batch of variants
+#'
+#' @param variant_batch Character vector of VCF-formatted variants
+#' @param flag_pick Include flag_pick to mark the selected transcript
+#' @param include_hgvs Include HGVS nomenclature
+#' @param include_domains Include protein domains
+#' @param include_regulatory Include regulatory consequences
+#' @return data.frame with VEP results
+#' @keywords internal
+query_vep_batch <- function(variant_batch,
+                           flag_pick = FALSE,
+                           include_hgvs = TRUE,
+                           include_domains = FALSE,
+                           include_regulatory = FALSE,
+                           verbose = TRUE) {
+  
+  # Construct API URL (fixed to homo_sapiens)
+  base_url <- "https://rest.ensembl.org"
+  endpoint <- "/vep/homo_sapiens/region"
+  url <- paste0(base_url, endpoint)
+  
+  # Construct request body
+  request_body <- list(variants = variant_batch)
+  
+  # Add VEP options as URL parameters
+  query_params <- list()
+  
+  if (flag_pick) {
+    query_params[["flag_pick"]] <- "1"
+  }
+  
+  if (include_hgvs) {
+    query_params[["hgvs"]] <- "1"
+  }
+  
+  if (include_domains) {
+    query_params[["domains"]] <- "1"
+  }
+  
+  if (include_regulatory) {
+    query_params[["regulatory"]] <- "1"
+  }
+  
+  # Set headers
+  headers <- c(
+    "Content-Type" = "application/json",
+    "Accept" = "application/json"
+  )
+  
+  # Make API request with error handling
+  tryCatch({
+    response <- httr::POST(
+      url = url,
+      query = query_params,
+      body = jsonlite::toJSON(request_body, auto_unbox = FALSE),
+      httr::add_headers(.headers = headers),
+      httr::timeout(120)  # 2 minute timeout
+    )
+    
+    # Check for rate limiting
+    if (httr::status_code(response) == 429) {
+      retry_after <- httr::headers(response)[["retry-after"]]
+      if (!is.null(retry_after)) {
+        wait_time <- as.numeric(retry_after)
+        message(sprintf("Rate limited. Waiting %d seconds...", wait_time))
+        Sys.sleep(wait_time)
+        
+        # Retry the request
+        response <- httr::POST(
+          url = url,
+          query = query_params,
+          body = jsonlite::toJSON(request_body, auto_unbox = FALSE),
+          httr::add_headers(.headers = headers),
+          httr::timeout(120)
+        )
+      }
+    }
+    
+    # Check response status
+    if (httr::status_code(response) != 200) {
+      # Get response content for debugging
+      error_content <- httr::content(response, "text", encoding = "UTF-8")
+      warning(sprintf("API request failed with status %d. URL: %s\nRequest body: %s\nError response: %s", 
+                     httr::status_code(response), 
+                     url,
+                     jsonlite::toJSON(request_body, auto_unbox = FALSE),
+                     substr(error_content, 1, 500)))  # Truncate long error messages
+      return(NULL)
+    }
+    
+    # Parse response
+    content <- httr::content(response, "text", encoding = "UTF-8")
+    
+    # Debug: show raw content structure
+    if (verbose) {
+      message("Raw API response (first 500 chars):")
+      message(substr(content, 1, 500))
+    }
+    
+    vep_results <- jsonlite::fromJSON(content, flatten = TRUE)  # Try flattened first
+    
+    # Debug: print structure to understand the response
+    if (verbose) {
+      message("API response structure:")
+      message(paste("Length:", length(vep_results)))
+      message(paste("Class:", class(vep_results)))
+      if (is.data.frame(vep_results)) {
+        message(paste("Column names:", paste(names(vep_results), collapse = ", ")))
+        message(paste("Number of rows:", nrow(vep_results)))
+        # Show first few column names for debugging
+        if (ncol(vep_results) > 10) {
+          message(paste("First 10 columns:", paste(names(vep_results)[1:10], collapse = ", ")))
+        }
+      } else if (length(vep_results) > 0) {
+        message(paste("First element names:", paste(names(vep_results[[1]]), collapse = ", ")))
+      }
+    }
+    
+    # Process and format results
+    formatted_results <- format_vep_results(vep_results, flag_pick)
+    
+    return(formatted_results)
+    
+  }, error = function(e) {
+    warning(sprintf("Error querying VEP API: %s", e$message))
+    return(NULL)
+  })
+}
+
+#' Format VEP API results into a tidy data.frame
+#'
+#' @param vep_results Raw results from VEP API (can be data.frame or list)
+#' @param flag_pick Logical. If TRUE, filter for transcripts with PICK flag
+#' @return Formatted data.frame
+#' @keywords internal
+format_vep_results <- function(vep_results, flag_pick = FALSE) {
+  if (is.null(vep_results) || length(vep_results) == 0) {
+    return(data.frame())
+  }
+  
+  # Handle case where VEP returns a data.frame directly (flattened results)
+  if (is.data.frame(vep_results)) {
+    # Check if transcript_consequences is a column with nested data
+    if ("transcript_consequences" %in% names(vep_results)) {
+      # transcript_consequences contains nested list data
+      result_list <- list()
+      
+      for (i in 1:nrow(vep_results)) {
+        row_data <- vep_results[i, ]
+        input_variant <- row_data$input %||% NA_character_
+        most_severe <- row_data$most_severe_consequence %||% NA_character_
+        
+        # Extract colocated variants
+        existing_variation <- ""
+        if (!is.null(row_data$colocated_variants) && length(row_data$colocated_variants[[1]]) > 0) {
+          colocated_data <- row_data$colocated_variants[[1]]
+          if (is.data.frame(colocated_data) && "id" %in% names(colocated_data)) {
+            existing_ids <- colocated_data$id[!is.na(colocated_data$id)]
+            existing_variation <- paste(existing_ids, collapse = ",")
+          }
+        }
+        
+        # Extract transcript consequences
+        if (!is.null(row_data$transcript_consequences) && length(row_data$transcript_consequences[[1]]) > 0) {
+          transcript_data <- row_data$transcript_consequences[[1]]
+          
+          # If transcript_data is a data.frame with multiple rows (multiple transcripts)
+          if (is.data.frame(transcript_data)) {
+            # Filter for transcripts with PICK flag if requested
+            if (flag_pick && "PICK" %in% names(transcript_data)) {
+              pick_transcripts <- transcript_data[transcript_data$PICK == 1, , drop = FALSE]
+              if (nrow(pick_transcripts) > 0) {
+                transcript_data <- pick_transcripts
+              } else {
+                # If no PICK transcripts found, take the first one
+                transcript_data <- transcript_data[1, , drop = FALSE]
+              }
+            } else if (flag_pick) {
+              # If flag_pick is TRUE but no PICK column, just take the first transcript
+              transcript_data <- transcript_data[1, , drop = FALSE]
+            }
+            
+            for (j in 1:nrow(transcript_data)) {
+              tc <- transcript_data[j, ]
+              
+              # Extract consequence terms
+              consequence_terms <- ""
+              if (!is.null(tc$consequence_terms) && length(tc$consequence_terms[[1]]) > 0) {
+                consequence_terms <- paste(tc$consequence_terms[[1]], collapse = ",")
+              }
+              
+              result_list[[length(result_list) + 1]] <- data.frame(
+                input = input_variant,
+                most_severe_consequence = most_severe,
+                gene_id = tc$gene_id %||% NA_character_,
+                gene_symbol = tc$gene_symbol %||% NA_character_,
+                transcript_id = tc$transcript_id %||% NA_character_,
+                consequence_terms = consequence_terms,
+                impact = tc$impact %||% NA_character_,
+                protein_position = as.character(tc$protein_start %||% NA),
+                amino_acids = tc$amino_acids %||% NA_character_,
+                codons = tc$codons %||% NA_character_,
+                existing_variation = existing_variation,
+                hgvsc = tc$hgvsc %||% NA_character_,
+                hgvsp = tc$hgvsp %||% NA_character_,
+                domains = "", # Will be processed separately if needed
+                stringsAsFactors = FALSE
+              )
+            }
+          }
+        } else {
+          # No transcript consequences
+          result_list[[length(result_list) + 1]] <- data.frame(
+            input = input_variant,
+            most_severe_consequence = most_severe,
+            gene_id = NA_character_,
+            gene_symbol = NA_character_,
+            transcript_id = NA_character_,
+            consequence_terms = NA_character_,
+            impact = NA_character_,
+            protein_position = NA_character_,
+            amino_acids = NA_character_,
+            codons = NA_character_,
+            existing_variation = existing_variation,
+            hgvsc = NA_character_,
+            hgvsp = NA_character_,
+            domains = NA_character_,
+            stringsAsFactors = FALSE
+          )
+        }
+      }
+      
+      return(dplyr::bind_rows(result_list))
+    }
+    
+    # Fallback: Extract relevant columns and create standardized output
+    result_df <- data.frame(
+      input = vep_results$input %||% NA_character_,
+      most_severe_consequence = vep_results$most_severe_consequence %||% NA_character_,
+      gene_id = vep_results$transcript_consequences.gene_id %||% 
+                vep_results$gene_id %||% NA_character_,
+      gene_symbol = vep_results$transcript_consequences.gene_symbol %||% 
+                    vep_results$gene_symbol %||% NA_character_,
+      transcript_id = vep_results$transcript_consequences.transcript_id %||% 
+                      vep_results$transcript_id %||% NA_character_,
+      consequence_terms = vep_results$transcript_consequences.consequence_terms %||% 
+                          vep_results$consequence_terms %||% NA_character_,
+      impact = vep_results$transcript_consequences.impact %||% 
+               vep_results$impact %||% NA_character_,
+      protein_position = as.character(vep_results$transcript_consequences.protein_start %||% 
+                                     vep_results$protein_start %||% NA),
+      amino_acids = vep_results$transcript_consequences.amino_acids %||% 
+                    vep_results$amino_acids %||% NA_character_,
+      codons = vep_results$transcript_consequences.codons %||% 
+               vep_results$codons %||% NA_character_,
+      existing_variation = "", # Will be filled below
+      hgvsc = vep_results$transcript_consequences.hgvsc %||% 
+              vep_results$hgvsc %||% NA_character_,
+      hgvsp = vep_results$transcript_consequences.hgvsp %||% 
+              vep_results$hgvsp %||% NA_character_,
+      domains = "", # Will be filled below
+      stringsAsFactors = FALSE
+    )
+    
+    # Handle existing variation (colocated variants)
+    colocated_cols <- grep("colocated_variants", names(vep_results), value = TRUE)
+    if (length(colocated_cols) > 0) {
+      # Try to extract IDs from colocated variants columns
+      id_cols <- grep("colocated_variants.*\\.id", names(vep_results), value = TRUE)
+      if (length(id_cols) > 0) {
+        existing_ids <- unlist(vep_results[id_cols])
+        result_df$existing_variation <- paste(existing_ids[!is.na(existing_ids)], collapse = ",")
+      }
+    }
+    
+    return(result_df)
+  }
+  
+  # Handle case where VEP returns a list (original structure)
+  # Initialize result list
+  result_list <- list()
+  
+  # Process each variant result
+  for (i in seq_along(vep_results)) {
+    variant_result <- vep_results[[i]]
+    
+    # Extract basic variant information
+    input_variant <- variant_result$input %||% NA_character_
+    most_severe <- variant_result$most_severe_consequence %||% NA_character_
+    
+    # Extract colocated variants (existing variation)
+    existing_variation <- ""
+    if (!is.null(variant_result$colocated_variants) && length(variant_result$colocated_variants) > 0) {
+      # Handle case where colocated_variants is a data.frame or list
+      if (is.data.frame(variant_result$colocated_variants)) {
+        existing_ids <- variant_result$colocated_variants$id
+      } else if (is.list(variant_result$colocated_variants)) {
+        existing_ids <- sapply(variant_result$colocated_variants, function(x) x$id %||% NA)
+      } else {
+        existing_ids <- character(0)
+      }
+      existing_variation <- paste(existing_ids[!is.na(existing_ids)], collapse = ",")
+    }
+    
+    # Check if there are transcript consequences
+    if (is.null(variant_result$transcript_consequences) || 
+        length(variant_result$transcript_consequences) == 0) {
+      # No transcript consequences, create minimal record
+      result_list[[i]] <- data.frame(
+        input = input_variant,
+        most_severe_consequence = most_severe,
+        gene_id = NA_character_,
+        gene_symbol = NA_character_,
+        transcript_id = NA_character_,
+        consequence_terms = NA_character_,
+        impact = NA_character_,
+        protein_position = NA_character_,
+        amino_acids = NA_character_,
+        codons = NA_character_,
+        existing_variation = existing_variation,
+        hgvsc = NA_character_,
+        hgvsp = NA_character_,
+        domains = NA_character_,
+        stringsAsFactors = FALSE
+      )
+    } else {
+      # Process transcript consequences
+      transcript_data <- variant_result$transcript_consequences
+      
+      # Handle case where transcript_consequences is a list of lists
+      if (is.list(transcript_data) && !is.data.frame(transcript_data)) {
+        # Convert list of transcript consequences to data.frame
+        transcript_rows <- list()
+        for (j in seq_along(transcript_data)) {
+          tc <- transcript_data[[j]]
+          
+          # Extract consequence terms
+          consequence_terms <- ""
+          if (!is.null(tc$consequence_terms)) {
+            if (is.character(tc$consequence_terms)) {
+              consequence_terms <- paste(tc$consequence_terms, collapse = ",")
+            } else if (is.list(tc$consequence_terms)) {
+              consequence_terms <- paste(unlist(tc$consequence_terms), collapse = ",")
+            }
+          }
+          
+          # Extract domains
+          domains <- ""
+          if (!is.null(tc$domains) && length(tc$domains) > 0) {
+            if (is.list(tc$domains)) {
+              domain_names <- sapply(tc$domains, function(d) d$db %||% "")
+              domains <- paste(domain_names[domain_names != ""], collapse = ",")
+            }
+          }
+          
+          transcript_rows[[j]] <- data.frame(
+            input = input_variant,
+            most_severe_consequence = most_severe,
+            gene_id = tc$gene_id %||% NA_character_,
+            gene_symbol = tc$gene_symbol %||% NA_character_,
+            transcript_id = tc$transcript_id %||% NA_character_,
+            consequence_terms = consequence_terms,
+            impact = tc$impact %||% NA_character_,
+            protein_position = as.character(tc$protein_start %||% NA),
+            amino_acids = tc$amino_acids %||% NA_character_,
+            codons = tc$codons %||% NA_character_,
+            existing_variation = existing_variation,
+            hgvsc = tc$hgvsc %||% NA_character_,
+            hgvsp = tc$hgvsp %||% NA_character_,
+            domains = domains,
+            stringsAsFactors = FALSE
+          )
+        }
+        result_list[[i]] <- dplyr::bind_rows(transcript_rows)
+      } else {
+        # transcript_data is already a data.frame, process directly
+        result_list[[i]] <- data.frame(
+          input = input_variant,
+          most_severe_consequence = most_severe,
+          gene_id = transcript_data$gene_id %||% NA_character_,
+          gene_symbol = transcript_data$gene_symbol %||% NA_character_,
+          transcript_id = transcript_data$transcript_id %||% NA_character_,
+          consequence_terms = sapply(transcript_data$consequence_terms %||% list(NA), 
+                                   function(x) paste(x, collapse = ",")),
+          impact = transcript_data$impact %||% NA_character_,
+          protein_position = as.character(transcript_data$protein_start %||% NA),
+          amino_acids = transcript_data$amino_acids %||% NA_character_,
+          codons = transcript_data$codons %||% NA_character_,
+          existing_variation = existing_variation,
+          hgvsc = transcript_data$hgvsc %||% NA_character_,
+          hgvsp = transcript_data$hgvsp %||% NA_character_,
+          domains = sapply(transcript_data$domains %||% list(NA), 
+                          function(x) if (is.list(x)) paste(sapply(x, function(d) d$db %||% ""), collapse = ",") else NA_character_),
+          stringsAsFactors = FALSE
+        )
+      }
+    }
+  }
+  
+  # Combine all results
+  if (length(result_list) > 0) {
+    final_result <- dplyr::bind_rows(result_list)
+  } else {
+    final_result <- data.frame()
+  }
+  
+  return(final_result)
 }
