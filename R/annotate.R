@@ -84,7 +84,7 @@ find_nearest_gene.GWASFormatter = function(x, threshold = 1e5, ...) {
     start,
     g.\"end\"
   FROM human_genes g
-  WHERE gene_biotype = 'protein_coding'
+  WHERE gene_biotype = 'protein_coding' AND gene_name IS NOT NULL
   ")
 
   intervals = dplyr::tbl(con, dplyr::sql(sql_index)) %>%
