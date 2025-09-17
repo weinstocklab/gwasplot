@@ -220,7 +220,7 @@ locuszoom.GWASFormatter <- function(x, locus_chr, locus_start, locus_end, includ
 
 #' @describeIn locuszoom Method for data.frame/tibble objects
 #' @export
-locuszoom.data.frame <- function(x, locus_chr, locus_start, locus_end, include_ccres = FALSE, ccre_biosample = NULL, ccre_cell_type = NULL, ...) {
+locuszoom.data.frame <- function(x, locus_chr, locus_start, locus_end, include_ccres = FALSE, ccre_biosample = NULL, ccre_cell_type = NULL, valid_biotype = "protein_coding", ...) {
   # Filter GWAS data for the locus
   df <- dplyr::filter(
     x, 
@@ -236,11 +236,12 @@ locuszoom.data.frame <- function(x, locus_chr, locus_start, locus_end, include_c
   genes <- dplyr::filter(
     gencode,
     type == "gene",
-    gene_biotype == "protein_coding",
+    gene_biotype %in% .env[["valid_biotype"]],  # Use the valid_biotype parameter
     chrom == locus_chr,
     start <= locus_end,
     end >= locus_start
   )  # Get exon (CDS) data for this region
+
   exons <- dplyr::filter(
     gencode,
     type == "CDS",
