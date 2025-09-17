@@ -174,8 +174,8 @@ gwas_clean <- gwas_stats %>%
     )
 
 
-manhattan(gwas_clean, output_prefix = "my_analysis")
-qqplot(gwas_clean, output_prefix = "my_analysis")
+manhattan(gwas_clean, output = "my_analysis.manhattan.pdf")
+qqplot(gwas_clean, output = "my_analysis.qq.pdf")
 
 # Get top hits and annotate with genes
 top_hits <- gwas_clean %>%

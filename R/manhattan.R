@@ -143,7 +143,7 @@ manhattan.data.frame = function(gwas, output, lower_logp_threshold = 3.0, ...) {
 }
 
 #' @export
-manhattan.GWASFormatter = function(gwas, output_prefix, lower_logp_threshold = 3.0, ...) {
+manhattan.GWASFormatter = function(gwas, output, lower_logp_threshold = 3.0, ...) {
   log_info("Now preparing to plot")
   
   # Create chromosome lookup and copy to database connection
