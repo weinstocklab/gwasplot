@@ -173,7 +173,7 @@ find_nearest_gene.tbl_df = function(x, threshold = 1e5, chrom_col = "CHROM", pos
   
   # Load and filter human genes data
   genes_df <- human_genes %>%
-    dplyr::filter(gene_biotype == "protein_coding") %>%
+    dplyr::filter(gene_biotype == "protein_coding" & !is.na(gene_name)) %>%
     dplyr::mutate(
       expanded_start = start - threshold,
       expanded_end = end + threshold
