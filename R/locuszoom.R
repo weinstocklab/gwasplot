@@ -205,17 +205,17 @@ assign_gene_tracks <- function(gene_df) {
 #' @param ... Additional arguments passed to methods.
 #' @return A ggplot2 object with the locuszoom-style plot.
 #' @export
-locuszoom <- function(x, locus_chr, locus_start, locus_end, include_ccres = FALSE, ccre_biosample = NULL, ccre_cell_type = NULL, ...) {
+locuszoom <- function(x, locus_chr, locus_start, locus_end, include_ccres = FALSE, ccre_biosample = NULL, ccre_cell_type = NULL, valid_biotype = "protein_coding", ...) {
   UseMethod("locuszoom")
 }
 
 #' @describeIn locuszoom Method for GWASFormatter objects
 #' @export
-locuszoom.GWASFormatter <- function(x, locus_chr, locus_start, locus_end, include_ccres = FALSE, ccre_biosample = NULL, ccre_cell_type = NULL, ...) {
+locuszoom.GWASFormatter <- function(x, locus_chr, locus_start, locus_end, include_ccres = FALSE, ccre_biosample = NULL, ccre_cell_type = NULL, valid_biotype = "protein_coding", ...) {
   df <- x$data %>%
     dplyr::filter(CHROM == locus_chr, POS >= locus_start, POS <= locus_end) %>%
     dplyr::collect()
-  locuszoom.data.frame(df, locus_chr, locus_start, locus_end, include_ccres, ccre_biosample, ccre_cell_type, ...)
+  locuszoom.data.frame(df, locus_chr, locus_start, locus_end, include_ccres, ccre_biosample, ccre_cell_type, valid_biotype = valid_biotype, ...)
 }
 
 #' @describeIn locuszoom Method for data.frame/tibble objects

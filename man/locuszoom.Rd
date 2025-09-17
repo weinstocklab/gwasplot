@@ -14,6 +14,7 @@ locuszoom(
   include_ccres = FALSE,
   ccre_biosample = NULL,
   ccre_cell_type = NULL,
+  valid_biotype = "protein_coding",
   ...
 )
 
@@ -25,6 +26,7 @@ locuszoom(
   include_ccres = FALSE,
   ccre_biosample = NULL,
   ccre_cell_type = NULL,
+  valid_biotype = "protein_coding",
   ...
 )
 
@@ -36,6 +38,7 @@ locuszoom(
   include_ccres = FALSE,
   ccre_biosample = NULL,
   ccre_cell_type = NULL,
+  valid_biotype = "protein_coding",
   ...
 )
 }
