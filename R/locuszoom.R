@@ -406,7 +406,7 @@ locuszoom.data.frame <- function(x, locus_chr, locus_start, locus_end, include_c
       )
       
       p_ccres <- ggplot2::ggplot(ccres_filtered, ggplot2::aes(xmin = start, xmax = end, ymin = -0.2, ymax = 0.2, fill = ccre_type)) +
-      ggplot2::geom_rect(alpha = 0.8, color = "black", linewidth = 0.2) +
+      ggplot2::geom_rect(alpha = 0.8, linewidth = 0) +
       ggplot2::scale_fill_manual(values = ccre_colors, name = "cCRE Type") +
       ggplot2::scale_x_continuous(
         limits = c(locus_start, locus_end),
