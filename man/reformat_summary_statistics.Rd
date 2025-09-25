@@ -4,12 +4,14 @@
 \alias{reformat_summary_statistics}
 \title{Reformat GWAS summary statistics from regenie or SAIGE}
 \usage{
-reformat_summary_statistics(file_path, use_cache = FALSE)
+reformat_summary_statistics(file_path, use_cache = FALSE, read_only = FALSE)
 }
 \arguments{
 \item{file_path}{Path to the GWAS summary statistics file (parquet or CSV).}
 
 \item{use_cache}{Logical. If TRUE, uses the cached table 'summary_stats' instead of reading the file again.}
+
+\item{read_only}{Logical. If TRUE, opens the database connection in read-only mode.}
 }
 \value{
 An R6 object of class `GWASFormatter` containing the reformatted summary statistics.

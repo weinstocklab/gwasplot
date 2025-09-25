@@ -242,6 +242,7 @@ locuszoom.data.frame <- function(x, locus_chr, locus_start, locus_end, include_c
     end >= locus_start
   )  # Get exon (CDS) data for this region
 
+
   exons <- dplyr::filter(
     gencode,
     type == "CDS",

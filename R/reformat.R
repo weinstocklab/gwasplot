@@ -5,15 +5,16 @@
 #'
 #' @param file_path Path to the GWAS summary statistics file (parquet or CSV).
 #' @param use_cache Logical. If TRUE, uses the cached table 'summary_stats' instead of reading the file again.
+#' @param read_only Logical. If TRUE, opens the database connection in read-only mode.
 #' @return An R6 object of class `GWASFormatter` containing the reformatted summary statistics.
 #' @export
-reformat_summary_statistics <- function(file_path, use_cache = FALSE) {
+reformat_summary_statistics <- function(file_path, use_cache = FALSE, read_only = FALSE) {
   # Check if the file exists
   if (!file.exists(file_path)) {
     stop(paste("File not found:", file_path))
   }
 
-  gwas = GWASFormatter$new(file_path, use_cache)
+  gwas = GWASFormatter$new(file_path, use_cache, read_only)
 
   if (!use_cache) {
     gwas$reformat()
@@ -161,9 +162,9 @@ GWASFormatter <- R6::R6Class(
     data_names = NULL,
     detected_format = NULL,
     file_path = NULL,
-    initialize = function(file_path, use_cache = FALSE) {
+    initialize = function(file_path, use_cache = FALSE, read_only = FALSE) {
       self$file_path = file_path
-      self$con = db_connect()
+      self$con = db_connect(read_only = read_only)
 
       file_ext <- tolower(tools::file_ext(file_path))
 
