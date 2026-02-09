@@ -11,9 +11,9 @@ More about what it does (maybe more than one line). Continuation lines should be
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/weinstockj/gwasplot}
-  \item \url{https://weinstockj.github.io/gwasplot/}
-  \item Report bugs at \url{https://github.com/weinstockj/gwasplot/issues}
+  \item \url{https://github.com/weinstocklab/gwasplot}
+  \item \url{https://weinstocklab.github.io/gwasplot/}
+  \item Report bugs at \url{https://github.com/weinstocklab/gwasplot/issues}
 }
 
 }
