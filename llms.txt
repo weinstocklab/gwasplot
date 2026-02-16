@@ -9,8 +9,8 @@ many rare variants, using [duckdb](https://duckdb.org/) to manipulate
 data.
 
 For more information, visit the [GitHub
-repository](https://github.com/weinstockj/gwasplot) or the [project
-website](https://weinstockj.github.io/gwasplot/).
+repository](https://github.com/weinstocklab/gwasplot) or the [project
+website](https://weinstocklab.github.io/gwasplot/).
 
 ## Roadmap
 
@@ -30,7 +30,7 @@ if (!requireNamespace("remotes", quietly = TRUE)) {
 }
 
 # Install gwasplot from GitHub
-remotes::install_github("weinstockj/gwasplot")
+remotes::install_github("weinstocklab/gwasplot")
 ```
 
 ## Input formats
